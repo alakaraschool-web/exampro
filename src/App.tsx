@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from './components/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
@@ -14,74 +14,24 @@ import { Settings } from './pages/Settings';
 import { Schools } from './pages/Schools';
 import { Classes } from './pages/Classes';
 import { Login } from './pages/Login';
-import { Setup } from './pages/Setup';
 import { Analysis } from './pages/Analysis';
-import { supabase } from './lib/supabase';
 
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) setUserRole(data.role);
-            setLoading(false);
-          });
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) setUserRole(data.role);
-          });
-      } else {
-        setUserRole(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const handleLogin = (role: string) => {
     setUserRole(role);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
     setUserRole(null);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-12 h-12 border-4 border-kenya-green/30 border-t-kenya-green rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   if (!userRole) {
     return (
       <Router>
         <Routes>
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
-          <Route path="/setup" element={<Setup />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>

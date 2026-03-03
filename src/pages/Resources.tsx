@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   FileText, 
   Video, 
@@ -16,133 +16,105 @@ import {
   BookOpen,
   ShieldCheck
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 interface Resource {
   id: string;
   title: string;
   type: 'pdf' | 'video' | 'link';
-  subject_id: string;
-  subject_name?: string;
-  teacher_id: string;
-  teacher_name?: string;
+  subject: string;
+  teacher: string;
   status: 'pending' | 'approved';
-  created_at: string;
+  date: string;
   description: string;
-  file_url?: string;
 }
 
 export const Resources = ({ role }: { role: string }) => {
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [subjects, setSubjects] = useState<any[]>([]);
   const [newResource, setNewResource] = useState({
     title: '',
     type: 'pdf' as const,
-    subject_id: '',
+    subject: 'Mathematics',
     description: ''
   });
 
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [resources, setResources] = useState<Resource[]>([
+    { 
+      id: '1', 
+      title: 'Form 4 Calculus Notes', 
+      type: 'pdf', 
+      subject: 'Mathematics', 
+      teacher: 'John Doe', 
+      status: 'approved', 
+      date: '2024-03-01',
+      description: 'Comprehensive notes covering integration and differentiation.'
+    },
+    { 
+      id: '2', 
+      title: 'Newtonian Mechanics Explained', 
+      type: 'video', 
+      subject: 'Physics', 
+      teacher: 'Jane Smith', 
+      status: 'approved', 
+      date: '2024-02-28',
+      description: 'A 15-minute video tutorial on Newton\'s laws of motion.'
+    },
+    { 
+      id: '3', 
+      title: 'Historical Sites of Kenya', 
+      type: 'link', 
+      subject: 'History', 
+      teacher: 'Robert Wilson', 
+      status: 'pending', 
+      date: '2024-03-02',
+      description: 'A curated list of virtual tours for historical sites.'
+    },
+    { 
+      id: '4', 
+      title: 'Organic Chemistry Lab Manual', 
+      type: 'pdf', 
+      subject: 'Chemistry', 
+      teacher: 'Jane Smith', 
+      status: 'approved', 
+      date: '2024-02-25',
+      description: 'Lab procedures and safety guidelines for organic chemistry experiments.'
+    },
+  ]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [resourcesRes, subjectsRes] = await Promise.all([
-        supabase
-          .from('resources')
-          .select(`
-            *,
-            subjects (name),
-            profiles (full_name)
-          `)
-          .order('created_at', { ascending: false }),
-        supabase.from('subjects').select('*').order('name')
-      ]);
-
-      if (resourcesRes.data) {
-        setResources(resourcesRes.data.map(r => ({
-          ...r,
-          subject_name: r.subjects?.name,
-          teacher_name: r.profiles?.full_name,
-          date: new Date(r.created_at).toISOString().split('T')[0]
-        })));
-      }
-
-      if (subjectsRes.data) {
-        setSubjects(subjectsRes.data);
-        if (subjectsRes.data.length > 0 && !newResource.subject_id) {
-          setNewResource(prev => ({ ...prev, subject_id: subjectsRes.data[0].id }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching resources:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddResource = async (e: React.FormEvent) => {
+  const handleAddResource = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-
-      await supabase.from('resources').insert({
-        title: newResource.title,
-        type: newResource.type,
-        subject_id: newResource.subject_id,
-        description: newResource.description,
-        teacher_id: userData.user.id,
-        status: role === 'super_admin' || role === 'principal' ? 'approved' : 'pending'
-      });
-
-      await fetchData();
-      setShowAddModal(false);
-      setNewResource({
-        title: '',
-        type: 'pdf',
-        subject_id: subjects[0]?.id || '',
-        description: ''
-      });
-    } catch (error) {
-      console.error('Error adding resource:', error);
-    } finally {
-      setLoading(false);
-    }
+    const id = (resources.length + 1).toString();
+    const resource: Resource = {
+      ...newResource,
+      id,
+      teacher: 'John Doe', // Mock current user
+      status: role === 'super_admin' ? 'approved' : 'pending',
+      date: new Date().toISOString().split('T')[0]
+    };
+    setResources([resource, ...resources]);
+    setShowAddModal(false);
+    setNewResource({
+      title: '',
+      type: 'pdf',
+      subject: 'Mathematics',
+      description: ''
+    });
   };
 
-  const handleApprove = async (id: string) => {
-    try {
-      await supabase.from('resources').update({ status: 'approved' }).eq('id', id);
-      await fetchData();
-    } catch (error) {
-      console.error('Error approving resource:', error);
-    }
+  const handleApprove = (id: string) => {
+    setResources(resources.map(r => r.id === id ? { ...r, status: 'approved' } : r));
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this resource?')) {
-      try {
-        await supabase.from('resources').delete().eq('id', id);
-        await fetchData();
-      } catch (error) {
-        console.error('Error deleting resource:', error);
-      }
+      setResources(resources.filter(r => r.id !== id));
     }
   };
 
   const filteredResources = resources.filter(r => {
     if (role === 'student' && r.status !== 'approved') return false;
-    const search = searchTerm.toLowerCase();
-    return r.title.toLowerCase().includes(search) || 
-           (r.subject_name || '').toLowerCase().includes(search);
+    return r.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           r.subject.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const getIcon = (type: Resource['type']) => {
@@ -221,91 +193,75 @@ export const Resources = ({ role }: { role: string }) => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          <div className="col-span-full py-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-kenya-green/30 border-t-kenya-green rounded-full animate-spin" />
-              <p className="text-sm text-slate-500 font-medium">Loading resources...</p>
-            </div>
-          </div>
-        ) : filteredResources.length === 0 ? (
-          <div className="col-span-full py-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <BookOpen size={40} className="text-slate-200" />
-              <p className="text-sm text-slate-500 font-medium">No resources found.</p>
-            </div>
-          </div>
-        ) : (
-          filteredResources.map(resource => (
-            <div key={resource.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden flex flex-col">
-              <div className="p-6 flex-1">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                    {getIcon(resource.type)}
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-                      resource.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                    }`}>
-                      {resource.status === 'approved' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                      {resource.status}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{(resource as any).date}</span>
-                  </div>
+        {filteredResources.map(resource => (
+          <div key={resource.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden flex flex-col">
+            <div className="p-6 flex-1">
+              <div className="flex items-start justify-between mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  {getIcon(resource.type)}
                 </div>
-
-                <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-kenya-green transition-colors">{resource.title}</h3>
-                <p className="text-xs text-kenya-green font-bold uppercase tracking-widest mb-4">{resource.subject_name}</p>
-                
-                <p className="text-sm text-slate-500 font-medium line-clamp-2 mb-6 leading-relaxed">
-                  {resource.description}
-                </p>
-
-                <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                  <BookOpen size={14} />
-                  <span>Shared by {resource.teacher_name}</span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                    resource.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                  }`}>
+                    {resource.status === 'approved' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                    {resource.status}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{resource.date}</span>
                 </div>
               </div>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-kenya-green transition-colors">{resource.title}</h3>
+              <p className="text-xs text-kenya-green font-bold uppercase tracking-widest mb-4">{resource.subject}</p>
               
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2 group-hover:bg-kenya-green/5 transition-colors">
-                {resource.status === 'approved' ? (
-                  <>
-                    <button 
-                      onClick={() => handleDownload(resource)}
-                      className="flex-1 bg-kenya-green text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-kenya-green/10 hover:shadow-kenya-green/20 active:scale-95"
-                    >
-                      <Download size={18} />
-                      Download
-                    </button>
-                    <button className="p-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors">
-                      <Eye size={18} />
-                    </button>
-                  </>
-                ) : (role === 'super_admin' || role === 'principal') ? (
-                  <>
-                    <button 
-                      onClick={() => handleApprove(resource.id)}
-                      className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-600/10 hover:bg-emerald-700"
-                    >
-                      <ShieldCheck size={18} />
-                      Approve
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(resource.id)}
-                      className="p-2.5 bg-white border border-slate-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex-1 text-center py-2.5 text-xs font-bold text-amber-600 uppercase tracking-widest italic">
-                    Awaiting Approval
-                  </div>
-                )}
+              <p className="text-sm text-slate-500 font-medium line-clamp-2 mb-6 leading-relaxed">
+                {resource.description}
+              </p>
+
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                <BookOpen size={14} />
+                <span>Shared by {resource.teacher}</span>
               </div>
             </div>
-          ))
-        )}
+            
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2 group-hover:bg-kenya-green/5 transition-colors">
+              {resource.status === 'approved' ? (
+                <>
+                  <button 
+                    onClick={() => handleDownload(resource)}
+                    className="flex-1 bg-kenya-green text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-kenya-green/10 hover:shadow-kenya-green/20 active:scale-95"
+                  >
+                    <Download size={18} />
+                    Download
+                  </button>
+                  <button className="p-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors">
+                    <Eye size={18} />
+                  </button>
+                </>
+              ) : role === 'super_admin' ? (
+                <>
+                  <button 
+                    onClick={() => handleApprove(resource.id)}
+                    className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-600/10 hover:bg-emerald-700"
+                  >
+                    <ShieldCheck size={18} />
+                    Approve
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(resource.id)}
+                    className="p-2.5 bg-white border border-slate-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </>
+              ) : (
+                <div className="flex-1 text-center py-2.5 text-xs font-bold text-amber-600 uppercase tracking-widest italic">
+                  Awaiting Approval
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Add Resource Modal */}
@@ -355,13 +311,15 @@ export const Resources = ({ role }: { role: string }) => {
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Subject</label>
                     <select 
-                      value={newResource.subject_id}
-                      onChange={(e) => setNewResource({ ...newResource, subject_id: e.target.value })}
+                      value={newResource.subject}
+                      onChange={(e) => setNewResource({ ...newResource, subject: e.target.value })}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all font-medium appearance-none"
                     >
-                      {subjects.map(sub => (
-                        <option key={sub.id} value={sub.id}>{sub.name}</option>
-                      ))}
+                      <option>Mathematics</option>
+                      <option>Physics</option>
+                      <option>Chemistry</option>
+                      <option>Biology</option>
+                      <option>English</option>
                     </select>
                   </div>
                 </div>

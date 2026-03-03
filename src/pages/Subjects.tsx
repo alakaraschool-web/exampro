@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   BookOpen, 
   Plus, 
@@ -14,62 +14,36 @@ import {
   Trash2,
   Edit
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 export const Subjects = ({ role }: { role?: string }) => {
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const [newSubject, setNewSubject] = useState({ name: '', code: '' });
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [subjects, setSubjects] = useState([
+    { id: '1', name: 'Mathematics', code: 'MAT', teachers: 4, students: 1248, color: 'bg-kenya-green', allocatedTeachers: ['John Doe', 'Sarah Parker', 'Samuel Okoth', 'Mary Ann'] },
+    { id: '2', name: 'English Language', code: 'ENG', teachers: 5, students: 1248, color: 'bg-kenya-red', allocatedTeachers: ['Jane Smith', 'Peter Pan', 'Alice Wonder', 'Bob Builder', 'Charlie Brown'] },
+    { id: '3', name: 'Physics', code: 'PHY', teachers: 3, students: 450, color: 'bg-kenya-black', allocatedTeachers: ['John Doe', 'Robert Wilson', 'Isaac Newton'] },
+    { id: '4', name: 'Chemistry', code: 'CHE', teachers: 3, students: 450, color: 'bg-kenya-gold', allocatedTeachers: ['Robert Wilson', 'Marie Curie', 'Louis Pasteur'] },
+    { id: '5', name: 'Biology', code: 'BIO', teachers: 3, students: 600, color: 'bg-kenya-green', allocatedTeachers: ['Jane Smith', 'Charles Darwin', 'Gregor Mendel'] },
+    { id: '6', name: 'History', code: 'HIS', teachers: 2, students: 300, color: 'bg-kenya-red', allocatedTeachers: ['Alice Wonder', 'Herodotus'] },
+  ]);
 
   const colors = ['bg-kenya-green', 'bg-kenya-red', 'bg-kenya-black', 'bg-kenya-gold'];
 
-  useEffect(() => {
-    fetchSubjects();
-  }, []);
-
-  const fetchSubjects = async () => {
-    setLoading(true);
-    try {
-      const { data } = await supabase.from('subjects').select('*');
-      if (data) {
-        setSubjects(data.map((s, i) => ({
-          ...s,
-          color: colors[i % colors.length],
-          teachers: 0, // Need to fetch from subject_teachers
-          students: 0, // Need to fetch from marks/enrollments
-          allocatedTeachers: []
-        })));
-      }
-    } catch (error) {
-      console.error('Error fetching subjects:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddSubject = async (e: React.FormEvent) => {
+  const handleAddSubject = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      if (editingSubject) {
-        await supabase.from('subjects').update(newSubject).eq('id', editingSubject.id);
-      } else {
-        await supabase.from('subjects').insert(newSubject);
-      }
-      await fetchSubjects();
-      setShowAddModal(false);
+    if (editingSubject) {
+      setSubjects(subjects.map(s => s.id === editingSubject.id ? { ...editingSubject, ...newSubject } : s));
       setEditingSubject(null);
-      setNewSubject({ name: '', code: '' });
-    } catch (error) {
-      console.error('Error saving subject:', error);
-    } finally {
-      setLoading(false);
+    } else {
+      const id = (subjects.length + 1).toString();
+      const color = colors[subjects.length % colors.length];
+      setSubjects([...subjects, { ...newSubject, id, teachers: 0, students: 0, color, allocatedTeachers: [] }]);
     }
+    setShowAddModal(false);
+    setNewSubject({ name: '', code: '' });
   };
 
   const handleEditSubject = (subject: any) => {
@@ -78,17 +52,11 @@ export const Subjects = ({ role }: { role?: string }) => {
     setShowAddModal(true);
   };
 
-  const handleDeleteSubject = async (id: string) => {
+  const handleDeleteSubject = (id: string) => {
     if (window.confirm('Are you sure you want to remove this subject?')) {
-      await supabase.from('subjects').delete().eq('id', id);
-      await fetchSubjects();
+      setSubjects(subjects.filter(s => s.id !== id));
     }
   };
-
-  const filteredSubjects = subjects.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handleViewTeachers = (subject: any) => {
     setSelectedSubject(subject);
@@ -103,8 +71,6 @@ export const Subjects = ({ role }: { role?: string }) => {
           <input 
             type="text" 
             placeholder="Search subjects..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
           />
         </div>
@@ -140,79 +106,59 @@ export const Subjects = ({ role }: { role?: string }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="px-8 py-12 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-4 border-kenya-green/30 border-t-kenya-green rounded-full animate-spin" />
-                    <p className="text-sm text-slate-500 font-medium">Loading subjects...</p>
-                  </div>
-                </td>
-              </tr>
-            ) : filteredSubjects.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-8 py-12 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <BookOpen size={40} className="text-slate-200" />
-                    <p className="text-sm text-slate-500 font-medium">No subjects found.</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filteredSubjects.map((subject) => (
-                <tr key={subject.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl ${subject.color} text-white flex items-center justify-center font-bold shadow-sm`}>
-                        <BookOpen size={20} />
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-900">{subject.name}</h4>
+            {subjects.map((subject) => (
+              <tr key={subject.id} className="hover:bg-slate-50/50 transition-colors group">
+                <td className="px-8 py-5">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl ${subject.color} text-white flex items-center justify-center font-bold shadow-sm`}>
+                      <BookOpen size={20} />
                     </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className="text-sm font-mono text-slate-600 font-medium">{subject.code}</span>
-                  </td>
-                  <td className="px-8 py-5">
-                    <button 
-                      onClick={() => handleViewTeachers(subject)}
-                      className="flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kenya-green transition-colors"
-                    >
-                      <Users size={16} className="text-slate-400" />
-                      {subject.teachers} Staff
+                    <h4 className="text-sm font-bold text-slate-900">{subject.name}</h4>
+                  </div>
+                </td>
+                <td className="px-8 py-5">
+                  <span className="text-sm font-mono text-slate-600 font-medium">{subject.code}</span>
+                </td>
+                <td className="px-8 py-5">
+                  <button 
+                    onClick={() => handleViewTeachers(subject)}
+                    className="flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kenya-green transition-colors"
+                  >
+                    <Users size={16} className="text-slate-400" />
+                    {subject.teachers} Staff
+                  </button>
+                </td>
+                <td className="px-8 py-5">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap size={16} className="text-slate-400" />
+                    <span className="text-sm font-bold text-slate-700">{subject.students} Enrolled</span>
+                  </div>
+                </td>
+                <td className="px-8 py-5 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {role !== 'teacher' && (
+                      <>
+                        <button 
+                          onClick={() => handleEditSubject(subject)}
+                          className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteSubject(subject.id)}
+                          className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                    <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
+                      <MoreVertical size={20} />
                     </button>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap size={16} className="text-slate-400" />
-                      <span className="text-sm font-bold text-slate-700">{subject.students} Enrolled</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {role !== 'teacher' && (
-                        <>
-                          <button 
-                            onClick={() => handleEditSubject(subject)}
-                            className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteSubject(subject.id)}
-                            className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </>
-                      )}
-                      <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
-                        <MoreVertical size={20} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

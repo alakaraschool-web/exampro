@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -11,7 +11,6 @@ import {
   Calendar,
   Award
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { 
   BarChart, 
   Bar, 
@@ -73,46 +72,6 @@ const performanceTrend = [
 
 export const Dashboard = ({ role }: { role: string }) => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    students: 0,
-    teachers: 0,
-    subjects: 0,
-    exams: 0
-  });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    setLoading(true);
-    try {
-      const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
-      const { count: teacherCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'teacher');
-      const { count: subjectCount } = await supabase.from('subjects').select('*', { count: 'exact', head: true });
-      const { count: examCount } = await supabase.from('exams').select('*', { count: 'exact', head: true });
-
-      setStats({
-        students: studentCount || 0,
-        teachers: teacherCount || 0,
-        subjects: subjectCount || 0,
-        exams: examCount || 0
-      });
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-kenya-green/30 border-t-kenya-green rounded-full animate-spin" />
-      </div>
-    );
-  }
   if (role === 'student') {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -279,7 +238,7 @@ export const Dashboard = ({ role }: { role: string }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Students" 
-          value={stats.students.toLocaleString()} 
+          value="1,248" 
           icon={GraduationCap} 
           trend="up" 
           trendValue="+12%" 
@@ -287,7 +246,7 @@ export const Dashboard = ({ role }: { role: string }) => {
         />
         <StatCard 
           title="Total Teachers" 
-          value={stats.teachers.toLocaleString()} 
+          value="42" 
           icon={Users} 
           trend="up" 
           trendValue="+2" 
@@ -303,7 +262,7 @@ export const Dashboard = ({ role }: { role: string }) => {
         />
         <StatCard 
           title="Active Exams" 
-          value={stats.exams.toLocaleString()} 
+          value="3" 
           icon={Calendar} 
           color="bg-kenya-gold" 
         />
