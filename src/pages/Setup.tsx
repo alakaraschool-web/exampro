@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export const Setup = () => {
@@ -12,8 +12,14 @@ export const Setup = () => {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
+  const isConfigured = (import.meta as any).env.VITE_SUPABASE_URL && (import.meta as any).env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co';
+
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isConfigured) {
+      setError('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment variables.');
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -33,13 +39,13 @@ export const Setup = () => {
 
       if (authData.user) {
         // 2. Create the profile with super_admin role
+        // Note: Removed 'email' column as it's not in the provided schema
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             id: authData.user.id,
             full_name: fullName,
-            role: 'super_admin',
-            email: email
+            role: 'super_admin'
           });
 
         if (profileError) throw profileError;
@@ -53,6 +59,27 @@ export const Setup = () => {
       setLoading(false);
     }
   };
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-md rounded-[32px] shadow-xl p-12 text-center space-y-6">
+          <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-3xl flex items-center justify-center mx-auto">
+            <AlertCircle size={40} />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Configuration Missing</h1>
+          <p className="text-slate-500 font-medium">
+            You haven't connected your Supabase project yet. Please add your credentials to the environment variables.
+          </p>
+          <div className="p-4 bg-slate-50 rounded-2xl text-left space-y-2">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Required Variables:</p>
+            <code className="block text-xs text-rose-600 font-mono">VITE_SUPABASE_URL</code>
+            <code className="block text-xs text-rose-600 font-mono">VITE_SUPABASE_ANON_KEY</code>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
