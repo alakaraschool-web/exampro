@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -15,28 +15,96 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const students = [
-  { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', current_score: 85 },
-  { id: '2', name: 'Michael Chen', admission_no: 'ADM-002', current_score: 78 },
-  { id: '3', name: 'Amara Okafor', admission_no: 'ADM-003', current_score: 92 },
-  { id: '4', name: 'David Smith', admission_no: 'ADM-004', current_score: 65 },
-  { id: '5', name: 'Emma Wilson', admission_no: 'ADM-005', current_score: 74 },
-  { id: '6', name: 'James Brown', admission_no: 'ADM-006', current_score: 81 },
-];
+import { supabase } from '../lib/supabase';
 
 export const MarksEntry = () => {
-  const [selectedClass, setSelectedClass] = useState('Form 4 Red');
-  const [selectedSubject, setSelectedSubject] = useState('Mathematics');
-  const [selectedExam, setSelectedExam] = useState('Term 1 End-Term');
-  const [scores, setScores] = useState<Record<string, string>>(
-    Object.fromEntries(students.map(s => [s.id, s.current_score.toString()]))
-  );
+  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [exams, setExams] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedExam, setSelectedExam] = useState('');
+  
+  const [scores, setScores] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkData, setBulkData] = useState<any[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      const [classesRes, subjectsRes, examsRes] = await Promise.all([
+        supabase.from('classes').select('*').order('name'),
+        supabase.from('subjects').select('*').order('name'),
+        supabase.from('exams').select('*').order('created_at', { ascending: false })
+      ]);
+
+      if (classesRes.data) {
+        setClasses(classesRes.data);
+        if (classesRes.data.length > 0) setSelectedClass(classesRes.data[0].id);
+      }
+      if (subjectsRes.data) {
+        setSubjects(subjectsRes.data);
+        if (subjectsRes.data.length > 0) setSelectedSubject(subjectsRes.data[0].id);
+      }
+      if (examsRes.data) {
+        setExams(examsRes.data);
+        if (examsRes.data.length > 0) setSelectedExam(examsRes.data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadList = async () => {
+    if (!selectedClass || !selectedSubject || !selectedExam) return;
+    setLoading(true);
+    try {
+      // Fetch students in class
+      const { data: studentsData } = await supabase
+        .from('students')
+        .select('*, profiles(full_name)')
+        .eq('class_id', selectedClass);
+
+      // Fetch existing marks
+      const { data: marksData } = await supabase
+        .from('marks')
+        .select('*')
+        .eq('exam_id', selectedExam)
+        .eq('subject_id', selectedSubject);
+
+      if (studentsData) {
+        setStudents(studentsData.map(s => ({
+          id: s.id,
+          name: s.profiles?.full_name,
+          admission_no: s.admission_number,
+          current_score: marksData?.find(m => m.student_id === s.id)?.score || ''
+        })));
+
+        const initialScores: Record<string, string> = {};
+        studentsData.forEach(s => {
+          const mark = marksData?.find(m => m.student_id === s.id);
+          initialScores[s.id] = mark ? mark.score.toString() : '';
+        });
+        setScores(initialScores);
+      }
+    } catch (error) {
+      console.error('Error loading list:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleScoreChange = (id: string, value: string) => {
     if (value === '' || (Number(value) >= 0 && Number(value) <= 100)) {
@@ -45,14 +113,37 @@ export const MarksEntry = () => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      const marksToSave = Object.entries(scores)
+        .filter(([_, score]) => score !== '')
+        .map(([studentId, score]) => ({
+          student_id: studentId,
+          subject_id: selectedSubject,
+          exam_id: selectedExam,
+          score: parseFloat(score as string)
+        }));
+
+      // In a real app, you'd use an upsert or handle conflicts
+      // For now, let's delete existing and insert new
+      await supabase.from('marks')
+        .delete()
+        .eq('exam_id', selectedExam)
+        .eq('subject_id', selectedSubject)
+        .in('student_id', Object.keys(scores));
+
+      if (marksToSave.length > 0) {
+        await supabase.from('marks').insert(marksToSave);
+      }
+
       setSaved(true);
-      // Navigate back to exams after a short delay
       setTimeout(() => navigate('/exams'), 1000);
-    }, 1500);
+    } catch (error) {
+      console.error('Error saving marks:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const downloadTemplate = () => {
@@ -102,9 +193,9 @@ export const MarksEntry = () => {
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-kenya-green/20 transition-all"
             >
-              <option>Form 4 Red</option>
-              <option>Form 4 Blue</option>
-              <option>Form 3 Green</option>
+              {classes.map(c => (
+                <option key={c.id} value={c.id}>{c.name} {c.stream}</option>
+              ))}
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
@@ -118,10 +209,9 @@ export const MarksEntry = () => {
               onChange={(e) => setSelectedSubject(e.target.value)}
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-kenya-green/20 transition-all"
             >
-              <option>Mathematics</option>
-              <option>English Language</option>
-              <option>Physics</option>
-              <option>Chemistry</option>
+              {subjects.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
@@ -135,16 +225,19 @@ export const MarksEntry = () => {
               onChange={(e) => setSelectedExam(e.target.value)}
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-kenya-green/20 transition-all"
             >
-              <option>Term 1 End-Term</option>
-              <option>Term 1 Mid-Term</option>
-              <option>Term 2 Opening</option>
+              {exams.map(e => (
+                <option key={e.id} value={e.id}>{e.name}</option>
+              ))}
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
         <div className="flex items-end h-full pt-6">
-          <button className="bg-kenya-green text-white font-bold px-6 py-2.5 rounded-xl hover:bg-kenya-green/90 transition-all active:scale-95">
+          <button 
+            onClick={loadList}
+            className="bg-kenya-green text-white font-bold px-6 py-2.5 rounded-xl hover:bg-kenya-green/90 transition-all active:scale-95"
+          >
             Load List
           </button>
         </div>

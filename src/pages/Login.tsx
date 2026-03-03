@@ -1,28 +1,64 @@
 import React, { useState } from 'react';
 import { GraduationCap, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     
-    // Simulate login based on email
-    setTimeout(() => {
-      let role = 'student';
-      if (email.includes('admin')) role = 'super_admin';
-      else if (email.includes('principal')) role = 'principal';
-      else if (email.includes('teacher')) role = 'teacher';
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (data.user) {
+        // Fetch user role from profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          // Fallback for demo if profile doesn't exist yet
+          let role = 'student';
+          if (email.includes('admin')) role = 'super_admin';
+          else if (email.includes('principal')) role = 'principal';
+          else if (email.includes('teacher')) role = 'teacher';
+          onLogin(role);
+        } else {
+          onLogin(profile.role);
+        }
+        
+        navigate('/');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
       
-      onLogin(role);
+      // Fallback for prototype mode if Supabase is not configured
+      if (!(import.meta as any).env.VITE_SUPABASE_URL) {
+        let role = 'student';
+        if (email.includes('admin')) role = 'super_admin';
+        else if (email.includes('principal')) role = 'principal';
+        else if (email.includes('teacher')) role = 'teacher';
+        onLogin(role);
+        navigate('/');
+      }
+    } finally {
       setLoading(false);
-      navigate('/');
-    }, 1000);
+    }
   };
 
   return (
@@ -37,6 +73,12 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
         </div>
 
         <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+              <AlertCircle size={18} />
+              {error}
+            </div>
+          )}
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Plus, 
@@ -17,6 +17,7 @@ import {
   X,
   CheckCircle2
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -26,38 +27,87 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export const Students = ({ role }: { role?: string }) => {
-  const isClassTeacher = true; // Mock: assume the teacher is a class teacher for now
-  const canManage = role !== 'teacher' || isClassTeacher;
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
-  const [newStudent, setNewStudent] = useState({ name: '', admission_no: '', class: 'Form 4 Red' });
+  const [newStudent, setNewStudent] = useState({ name: '', admission_no: '', class_id: '' });
+  const [classes, setClasses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const [allStudents, setAllStudents] = useState([
-    { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', class: 'Form 4 Red', performance: 'Excellent', avatar: 'SJ', teacher: 'teacher@school.com' },
-    { id: '2', name: 'Michael Chen', admission_no: 'ADM-002', class: 'Form 4 Blue', performance: 'Good', avatar: 'MC', teacher: 'other@school.com' },
-    { id: '3', name: 'Amara Okafor', admission_no: 'ADM-003', class: 'Form 3 Green', performance: 'Outstanding', avatar: 'AO', teacher: 'teacher@school.com' },
-    { id: '4', name: 'David Smith', admission_no: 'ADM-004', class: 'Form 4 Red', performance: 'Average', avatar: 'DS', teacher: 'teacher@school.com' },
-    { id: '5', name: 'Emma Wilson', admission_no: 'ADM-005', class: 'Form 2 Blue', performance: 'Good', avatar: 'EW', teacher: 'other@school.com' },
-    { id: '6', name: 'James Brown', admission_no: 'ADM-006', class: 'Form 1 Red', performance: 'Good', avatar: 'JB', teacher: 'other@school.com' },
-  ]);
+  const canManage = role !== 'teacher'; // Simplified for now
 
-  const students = role === 'teacher' 
-    ? allStudents.filter(s => s.teacher === 'teacher@school.com')
-    : allStudents;
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const handleAddStudent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingStudent) {
-      setAllStudents(allStudents.map(s => s.id === editingStudent.id ? { ...editingStudent, ...newStudent, avatar: newStudent.name.split(' ').map(n => n[0]).join('') } : s));
-      setEditingStudent(null);
-    } else {
-      const id = (allStudents.length + 1).toString();
-      const avatar = newStudent.name.split(' ').map(n => n[0]).join('');
-      setAllStudents([...allStudents, { ...newStudent, id, performance: 'N/A', avatar, teacher: 'teacher@school.com' }]);
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const { data: classesData } = await supabase.from('classes').select('*');
+      const { data: studentsData } = await supabase
+        .from('students')
+        .select(`
+          *,
+          profiles (full_name, avatar_url),
+          classes (name, stream)
+        `);
+      
+      if (classesData) setClasses(classesData);
+      if (studentsData) {
+        setStudents(studentsData.map(s => ({
+          id: s.id,
+          name: s.profiles?.full_name || 'Unknown',
+          admission_no: s.admission_number,
+          class: s.classes ? `${s.classes.name} ${s.classes.stream}` : 'Unassigned',
+          class_id: s.class_id,
+          performance: 'N/A', // Calculated later
+          avatar: (s.profiles?.full_name || 'U').split(' ').map((n: string) => n[0]).join('')
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    } finally {
+      setLoading(false);
     }
-    setShowAddModal(false);
-    setNewStudent({ name: '', admission_no: '', class: 'Form 4 Red' });
+  };
+
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (editingStudent) {
+        // Update logic
+        await supabase.from('students').update({
+          admission_number: newStudent.admission_no,
+          class_id: newStudent.class_id
+        }).eq('id', editingStudent.id);
+      } else {
+        // Create logic (simplified: assumes profile already exists or creates a mock one)
+        // In a real app, you'd create an auth user or a profile first.
+        const { data: profile } = await supabase.from('profiles').insert({
+          full_name: newStudent.name,
+          role: 'student'
+        }).select().single();
+
+        if (profile) {
+          await supabase.from('students').insert({
+            profile_id: profile.id,
+            admission_number: newStudent.admission_no,
+            class_id: newStudent.class_id
+          });
+        }
+      }
+      await fetchData();
+      setShowAddModal(false);
+      setEditingStudent(null);
+      setNewStudent({ name: '', admission_no: '', class_id: '' });
+    } catch (error) {
+      console.error('Error saving student:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditStudent = (student: any) => {
@@ -65,30 +115,22 @@ export const Students = ({ role }: { role?: string }) => {
     setNewStudent({
       name: student.name,
       admission_no: student.admission_no,
-      class: student.class
+      class_id: student.class_id || ''
     });
     setShowAddModal(true);
   };
 
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this student?')) {
-      setAllStudents(allStudents.filter(s => s.id !== id));
+      await supabase.from('students').delete().eq('id', id);
+      await fetchData();
     }
   };
 
-  const handleExport = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Name,Admission No,Class,Performance\n"
-      + students.map(s => `${s.name},${s.admission_no},${s.class},${s.performance}`).join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "students_list.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const filteredStudents = students.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.admission_no.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleBulkImport = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,11 +144,11 @@ export const Students = ({ role }: { role?: string }) => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            {role === 'teacher' ? (isClassTeacher ? 'My Class Students' : 'My Students') : 'Learner Directory'}
+            {role === 'teacher' ? 'My Students' : 'Learner Directory'}
           </h1>
           <p className="text-sm text-slate-500 font-medium">
             {role === 'teacher' 
-              ? (isClassTeacher ? 'Manage learners in your assigned class (Form 4 Red).' : 'View learners in your assigned classes.') 
+              ? 'View learners in your assigned classes.' 
               : 'Manage all students registered in the system.'}
           </p>
         </div>
@@ -117,6 +159,8 @@ export const Students = ({ role }: { role?: string }) => {
             <input 
               type="text" 
               placeholder="Search students..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
             />
           </div>
@@ -136,7 +180,7 @@ export const Students = ({ role }: { role?: string }) => {
                 <button 
                   onClick={() => {
                     setEditingStudent(null);
-                    setNewStudent({ name: '', admission_no: '', class: 'Form 4 Red' });
+                    setNewStudent({ name: '', admission_no: '', class_id: '' });
                     setShowAddModal(true);
                   }}
                   className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 text-sm transition-all active:scale-95"
@@ -154,7 +198,19 @@ export const Students = ({ role }: { role?: string }) => {
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
           <h3 className="font-bold text-slate-900">Learner Directory</h3>
           <button 
-            onClick={handleExport}
+            onClick={() => {
+              const csvContent = "data:text/csv;charset=utf-8," 
+                + "Name,Admission No,Class,Performance\n"
+                + filteredStudents.map(s => `${s.name},${s.admission_no},${s.class},${s.performance}`).join("\n");
+              
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement("a");
+              link.setAttribute("href", encodedUri);
+              link.setAttribute("download", "students_list.csv");
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
             className="flex items-center gap-2 text-sm font-bold text-kenya-green hover:text-kenya-green/80"
           >
             <FileSpreadsheet size={18} />
@@ -172,61 +228,81 @@ export const Students = ({ role }: { role?: string }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {students.map((student) => (
-              <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="px-8 py-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold group-hover:bg-kenya-green/10 group-hover:text-kenya-green transition-colors">
-                      {student.avatar}
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">{student.name}</h4>
-                      <p className="text-xs text-slate-500 font-medium">Regular Student</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-8 py-5">
-                  <span className="text-sm font-mono text-slate-600 font-medium">{student.admission_no}</span>
-                </td>
-                <td className="px-8 py-5">
-                  <span className="text-sm font-bold text-slate-700">{student.class}</span>
-                </td>
-                <td className="px-8 py-5">
-                  <span className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-bold",
-                    student.performance === 'Outstanding' ? "bg-emerald-50 text-emerald-600" :
-                    student.performance === 'Excellent' ? "bg-kenya-green/10 text-kenya-green" :
-                    student.performance === 'Good' ? "bg-amber-50 text-amber-600" :
-                    "bg-slate-50 text-slate-600"
-                  )}>
-                    {student.performance}
-                  </span>
-                </td>
-                <td className="px-8 py-5 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button 
-                      onClick={() => handleEditStudent(student)}
-                      className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteStudent(student.id)}
-                      className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                    <button className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all">
-                      <BookOpen size={18} />
-                    </button>
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-8 py-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-4 border-kenya-green/30 border-t-kenya-green rounded-full animate-spin" />
+                    <p className="text-sm text-slate-500 font-medium">Loading students...</p>
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : filteredStudents.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-8 py-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Users size={40} className="text-slate-200" />
+                    <p className="text-sm text-slate-500 font-medium">No students found.</p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredStudents.map((student) => (
+                <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold group-hover:bg-kenya-green/10 group-hover:text-kenya-green transition-colors">
+                        {student.avatar}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">{student.name}</h4>
+                        <p className="text-xs text-slate-500 font-medium">Regular Student</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className="text-sm font-mono text-slate-600 font-medium">{student.admission_no}</span>
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className="text-sm font-bold text-slate-700">{student.class}</span>
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs font-bold",
+                      student.performance === 'Outstanding' ? "bg-emerald-50 text-emerald-600" :
+                      student.performance === 'Excellent' ? "bg-kenya-green/10 text-kenya-green" :
+                      student.performance === 'Good' ? "bg-amber-50 text-amber-600" :
+                      "bg-slate-50 text-slate-600"
+                    )}>
+                      {student.performance}
+                    </span>
+                  </td>
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleEditStudent(student)}
+                        className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteStudent(student.id)}
+                        className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      <button className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all">
+                        <BookOpen size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
         <div className="p-6 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-500">Showing {students.length} of 1,248 students</span>
+          <span className="text-xs font-medium text-slate-500">Showing {filteredStudents.length} students</span>
           <div className="flex items-center gap-2">
             <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all">Previous</button>
             <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all">Next</button>
@@ -327,15 +403,14 @@ export const Students = ({ role }: { role?: string }) => {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Class</label>
                   <select 
-                    value={newStudent.class}
-                    onChange={(e) => setNewStudent({ ...newStudent, class: e.target.value })}
+                    value={newStudent.class_id}
+                    onChange={(e) => setNewStudent({ ...newStudent, class_id: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all font-medium appearance-none"
                   >
-                    <option>Form 4 Red</option>
-                    <option>Form 4 Blue</option>
-                    <option>Form 3 Green</option>
-                    <option>Form 2 Blue</option>
-                    <option>Form 1 Red</option>
+                    <option value="">Select Class</option>
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} {c.stream}</option>
+                    ))}
                   </select>
                 </div>
               </div>
