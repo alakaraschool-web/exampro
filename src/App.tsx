@@ -14,6 +14,7 @@ import { Settings } from './pages/Settings';
 import { Schools } from './pages/Schools';
 import { Classes } from './pages/Classes';
 import { Login } from './pages/Login';
+import { Analysis } from './pages/Analysis';
 
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -45,15 +46,15 @@ export default function App() {
           <Route path="/exams" element={<Exams role={userRole} />} />
           <Route path="/exams/missing" element={<MissingMarks />} />
           <Route path="/marks" element={<MarksEntry />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/reports" element={<Reports role={userRole} />} />
+          <Route path="/analysis" element={<Analysis />} />
           <Route path="/resources" element={<Resources role={userRole} />} />
           <Route path="/teachers" element={<Teachers role={userRole} />} />
           <Route path="/students" element={<Students role={userRole} />} />
-          <Route path="/subjects" element={<Subjects />} />
-          <Route path="/classes" element={<Classes />} />
+          <Route path="/subjects" element={<Subjects role={userRole} />} />
+          <Route path="/classes" element={<Classes role={userRole} />} />
           <Route path="/schools" element={<Schools />} />
-          <Route path="/settings" element={<Settings />} />
-          {/* Add other routes as needed */}
+          <Route path="/settings" element={<Settings role={userRole} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </DashboardLayout>

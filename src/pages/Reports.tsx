@@ -15,9 +15,11 @@ import {
   CheckCircle2,
   X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { generateStudentPDF, generateClassPDF } from '../utils/pdfGenerator';
 
 const ReportCardPreview = ({ student, template }: any) => {
+  const navigate = useNavigate();
   const handleDownload = () => {
     const reportData = {
       name: student.name,
@@ -71,6 +73,13 @@ const ReportCardPreview = ({ student, template }: any) => {
             </button>
             <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
               <Share2 size={20} />
+            </button>
+            <button 
+              onClick={() => navigate('/analysis')}
+              className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all active:scale-95"
+            >
+              <TrendingUp size={20} />
+              View Analysis
             </button>
             <button 
               onClick={handleDownload}
@@ -173,8 +182,9 @@ const ReportCardPreview = ({ student, template }: any) => {
   );
 };
 
-export const Reports = () => {
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+export const Reports = ({ role }: { role: string }) => {
+  const navigate = useNavigate();
+  const [selectedStudent, setSelectedStudent] = useState<any>(role === 'student' ? { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', class: 'Form 4 Red' } : null);
   const [template, setTemplate] = useState<'standard' | 'detailed' | 'summary'>('standard');
   const [isBulkDownloading, setIsBulkDownloading] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -299,7 +309,7 @@ export const Reports = () => {
         </div>
       )}
 
-      {!selectedStudent ? (
+      {role !== 'student' && !selectedStudent && (
         <>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
@@ -332,6 +342,13 @@ export const Reports = () => {
                   </button>
                 ))}
               </div>
+              <button 
+                onClick={() => navigate('/analysis')}
+                className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all active:scale-95"
+              >
+                <TrendingUp size={20} />
+                View Analysis
+              </button>
               <button 
                 onClick={() => setShowBulkModal(true)}
                 className="flex items-center gap-2 px-6 py-3 bg-kenya-green text-white rounded-2xl font-bold hover:bg-kenya-green/90 shadow-lg shadow-kenya-green/10 transition-all active:scale-95"
@@ -368,15 +385,19 @@ export const Reports = () => {
             ))}
           </div>
         </>
-      ) : (
+      )}
+
+      {selectedStudent && (
         <>
-          <button 
-            onClick={() => setSelectedStudent(null)}
-            className="flex items-center gap-2 text-slate-500 font-bold hover:text-slate-900 transition-colors"
-          >
-            <ChevronRight size={20} className="rotate-180" />
-            Back to Student List
-          </button>
+          {role !== 'student' && (
+            <button 
+              onClick={() => setSelectedStudent(null)}
+              className="flex items-center gap-2 text-slate-500 font-bold hover:text-slate-900 transition-colors"
+            >
+              <ChevronRight size={20} className="rotate-180" />
+              Back to Student List
+            </button>
+          )}
           <ReportCardPreview student={selectedStudent} template={template} />
         </>
       )}

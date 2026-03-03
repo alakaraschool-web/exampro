@@ -21,6 +21,7 @@ import {
 export const Teachers = ({ role }: { role?: string }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [newTeacher, setNewTeacher] = useState({
     name: '',
@@ -29,12 +30,12 @@ export const Teachers = ({ role }: { role?: string }) => {
     phone: ''
   });
 
-  const teachers = [
+  const [teachers, setTeachers] = useState([
     { id: '1', name: 'Dr. Alakara', role: 'Principal', subjects: ['Management'], email: 'principal@school.ac.ke', phone: '+254 712 345 678', avatar: 'DA' },
     { id: '2', name: 'John Doe', role: 'Senior Teacher', subjects: ['Math', 'Physics'], email: 'john.doe@school.ac.ke', phone: '+254 723 456 789', avatar: 'JD' },
     { id: '3', name: 'Jane Smith', role: 'Teacher', subjects: ['English', 'History'], email: 'jane.smith@school.ac.ke', phone: '+254 734 567 890', avatar: 'JS' },
     { id: '4', name: 'Robert Wilson', role: 'Teacher', subjects: ['Biology', 'Chemistry'], email: 'robert.w@school.ac.ke', phone: '+254 745 678 901', avatar: 'RW' },
-  ];
+  ]);
 
   const generateEmail = (name: string) => {
     if (!name) return '';
@@ -42,9 +43,46 @@ export const Teachers = ({ role }: { role?: string }) => {
     return `${cleanName}@school.ac.ke`;
   };
 
+  const handleAddTeacher = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingTeacher) {
+      setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...editingTeacher, ...newTeacher, email: generateEmail(newTeacher.name), avatar: newTeacher.name.split(' ').map(n => n[0]).join('') } : t));
+      setEditingTeacher(null);
+    } else {
+      const id = (teachers.length + 1).toString();
+      const avatar = newTeacher.name.split(' ').map(n => n[0]).join('');
+      setTeachers([...teachers, { ...newTeacher, id, email: generateEmail(newTeacher.name), avatar }]);
+    }
+    setShowAddModal(false);
+    setNewTeacher({ name: '', role: 'Teacher', subjects: [], phone: '' });
+  };
+
+  const handleEditTeacher = (teacher: any) => {
+    setEditingTeacher(teacher);
+    setNewTeacher({
+      name: teacher.name,
+      role: teacher.role,
+      subjects: teacher.subjects,
+      phone: teacher.phone
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDeleteTeacher = (id: string) => {
+    if (window.confirm('Are you sure you want to remove this teacher?')) {
+      setTeachers(teachers.filter(t => t.id !== id));
+    }
+  };
+
   const handleAssign = (teacher: any) => {
     setSelectedTeacher(teacher);
     setShowAssignModal(true);
+  };
+
+  const handleSaveAssignments = () => {
+    // In a real app, this would update the teacher's roles and subjects in the DB
+    setShowAssignModal(false);
+    setSelectedTeacher(null);
   };
 
   return (
@@ -62,9 +100,13 @@ export const Teachers = ({ role }: { role?: string }) => {
           <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors">
             <Filter size={20} />
           </button>
-          {role === 'principal' && (
+          {(role === 'principal' || role === 'super_admin') && (
             <button 
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setEditingTeacher(null);
+                setNewTeacher({ name: '', role: 'Teacher', subjects: [], phone: '' });
+                setShowAddModal(true);
+              }}
               className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95"
             >
               <Plus size={20} />
@@ -83,21 +125,29 @@ export const Teachers = ({ role }: { role?: string }) => {
                   {teacher.avatar}
                 </div>
                 <div className="flex items-center gap-1">
-                  {role === 'principal' && (
-                    <button 
-                      onClick={() => handleAssign(teacher)}
-                      className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
-                      title="Assign Roles & Classes"
-                    >
-                      <ClipboardList size={18} />
-                    </button>
+                  {(role === 'principal' || role === 'super_admin') && (
+                    <>
+                      <button 
+                        onClick={() => handleAssign(teacher)}
+                        className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
+                        title="Assign Roles & Classes"
+                      >
+                        <ClipboardList size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleEditTeacher(teacher)}
+                        className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteTeacher(teacher.id)}
+                        className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
                   )}
-                  <button className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all">
-                    <Edit size={18} />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all">
-                    <Trash2 size={18} />
-                  </button>
                 </div>
               </div>
 
@@ -194,7 +244,7 @@ export const Teachers = ({ role }: { role?: string }) => {
                   Cancel
                 </button>
                 <button 
-                  onClick={() => setShowAssignModal(false)}
+                  onClick={handleSaveAssignments}
                   className="flex-1 px-6 py-4 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/20 hover:bg-kenya-green/90 transition-all flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 size={20} />
@@ -212,7 +262,7 @@ export const Teachers = ({ role }: { role?: string }) => {
           <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Add New Teacher</h2>
+                <h2 className="text-2xl font-bold text-slate-900">{editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}</h2>
                 <p className="text-sm text-slate-500 font-medium mt-1">Register a new staff member to the system.</p>
               </div>
               <button 
@@ -223,12 +273,13 @@ export const Teachers = ({ role }: { role?: string }) => {
               </button>
             </div>
 
-            <div className="p-8 space-y-6">
+            <form onSubmit={handleAddTeacher} className="p-8 space-y-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
                   <input 
                     type="text" 
+                    required
                     value={newTeacher.name}
                     onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
                     placeholder="e.g. Samuel Okoth"
@@ -283,20 +334,21 @@ export const Teachers = ({ role }: { role?: string }) => {
 
               <div className="flex items-center gap-3 pt-4">
                 <button 
+                  type="button"
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 px-6 py-4 border border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-50 transition-all"
                 >
                   Cancel
                 </button>
                 <button 
-                  onClick={() => setShowAddModal(false)}
+                  type="submit"
                   className="flex-1 px-6 py-4 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/20 hover:bg-kenya-green/90 transition-all flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 size={20} />
-                  Confirm & Add
+                  {editingTeacher ? 'Update Teacher' : 'Confirm & Add'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

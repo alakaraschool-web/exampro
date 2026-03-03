@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   BookOpen, 
@@ -70,6 +71,7 @@ const performanceTrend = [
 ];
 
 export const Dashboard = ({ role }: { role: string }) => {
+  const navigate = useNavigate();
   if (role === 'student') {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -218,7 +220,10 @@ export const Dashboard = ({ role }: { role: string }) => {
                 </div>
               ))}
             </div>
-            <button className="w-full mt-8 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
+            <button 
+              onClick={() => navigate('/students')}
+              className="w-full mt-8 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+            >
               View All Students
             </button>
           </div>
@@ -352,7 +357,12 @@ export const Dashboard = ({ role }: { role: string }) => {
         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-lg font-bold text-slate-900">Top Performers</h2>
-            <button className="text-sm font-bold text-kenya-green hover:text-kenya-green/80">View All</button>
+            <button 
+              onClick={() => navigate('/analysis')}
+              className="text-sm font-bold text-kenya-green hover:text-kenya-green/80"
+            >
+              View All
+            </button>
           </div>
           <div className="space-y-6">
             {[

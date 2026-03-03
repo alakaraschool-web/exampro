@@ -38,7 +38,7 @@ export const Resources = ({ role }: { role: string }) => {
     description: ''
   });
 
-  const resources: Resource[] = [
+  const [resources, setResources] = useState<Resource[]>([
     { 
       id: '1', 
       title: 'Form 4 Calculus Notes', 
@@ -79,7 +79,37 @@ export const Resources = ({ role }: { role: string }) => {
       date: '2024-02-25',
       description: 'Lab procedures and safety guidelines for organic chemistry experiments.'
     },
-  ];
+  ]);
+
+  const handleAddResource = (e: React.FormEvent) => {
+    e.preventDefault();
+    const id = (resources.length + 1).toString();
+    const resource: Resource = {
+      ...newResource,
+      id,
+      teacher: 'John Doe', // Mock current user
+      status: role === 'super_admin' ? 'approved' : 'pending',
+      date: new Date().toISOString().split('T')[0]
+    };
+    setResources([resource, ...resources]);
+    setShowAddModal(false);
+    setNewResource({
+      title: '',
+      type: 'pdf',
+      subject: 'Mathematics',
+      description: ''
+    });
+  };
+
+  const handleApprove = (id: string) => {
+    setResources(resources.map(r => r.id === id ? { ...r, status: 'approved' } : r));
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this resource?')) {
+      setResources(resources.filter(r => r.id !== id));
+    }
+  };
 
   const filteredResources = resources.filter(r => {
     if (role === 'student' && r.status !== 'approved') return false;
@@ -95,6 +125,18 @@ export const Resources = ({ role }: { role: string }) => {
     }
   };
 
+  const handleDownload = (resource: Resource) => {
+    // In a real app, this would trigger a file download
+    alert(`Downloading ${resource.title}...`);
+    // For demo purposes, we can simulate a download by creating a blob
+    const element = document.createElement("a");
+    const file = new Blob([`Content of ${resource.title}`], {type: 'text/plain'});
+    element.href = URL.createObjectURL(file);
+    element.download = `${resource.title.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(element);
+    element.click();
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -104,7 +146,7 @@ export const Resources = ({ role }: { role: string }) => {
         </div>
         
         <div className="flex items-center gap-3">
-          {(role === 'teacher' || role === 'principal') && (
+          {(role === 'teacher' || role === 'principal' || role === 'super_admin') && (
             <button 
               onClick={() => setShowAddModal(true)}
               className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95"
@@ -185,7 +227,10 @@ export const Resources = ({ role }: { role: string }) => {
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2 group-hover:bg-kenya-green/5 transition-colors">
               {resource.status === 'approved' ? (
                 <>
-                  <button className="flex-1 bg-kenya-green text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-kenya-green/10 hover:shadow-kenya-green/20 active:scale-95">
+                  <button 
+                    onClick={() => handleDownload(resource)}
+                    className="flex-1 bg-kenya-green text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-kenya-green/10 hover:shadow-kenya-green/20 active:scale-95"
+                  >
                     <Download size={18} />
                     Download
                   </button>
@@ -195,11 +240,17 @@ export const Resources = ({ role }: { role: string }) => {
                 </>
               ) : role === 'super_admin' ? (
                 <>
-                  <button className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-600/10 hover:bg-emerald-700">
+                  <button 
+                    onClick={() => handleApprove(resource.id)}
+                    className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-600/10 hover:bg-emerald-700"
+                  >
                     <ShieldCheck size={18} />
                     Approve
                   </button>
-                  <button className="p-2.5 bg-white border border-slate-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors">
+                  <button 
+                    onClick={() => handleDelete(resource.id)}
+                    className="p-2.5 bg-white border border-slate-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors"
+                  >
                     <Trash2 size={18} />
                   </button>
                 </>
@@ -230,12 +281,13 @@ export const Resources = ({ role }: { role: string }) => {
               </button>
             </div>
 
-            <div className="p-8 space-y-6">
+            <form onSubmit={handleAddResource} className="p-8 space-y-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Resource Title</label>
                   <input 
                     type="text" 
+                    required
                     value={newResource.title}
                     onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
                     placeholder="e.g. Form 4 Physics Revision"
@@ -276,6 +328,7 @@ export const Resources = ({ role }: { role: string }) => {
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Description</label>
                   <textarea 
                     rows={3}
+                    required
                     value={newResource.description}
                     onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
                     placeholder="Briefly describe what this resource covers..."
@@ -296,20 +349,21 @@ export const Resources = ({ role }: { role: string }) => {
 
               <div className="flex items-center gap-3 pt-4">
                 <button 
+                  type="button"
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 px-6 py-4 border border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-50 transition-all"
                 >
                   Cancel
                 </button>
                 <button 
-                  onClick={() => setShowAddModal(false)}
+                  type="submit"
                   className="flex-1 px-6 py-4 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/20 hover:bg-kenya-green/90 transition-all flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 size={20} />
-                  Submit for Approval
+                  {role === 'super_admin' ? 'Publish Resource' : 'Submit for Approval'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

@@ -37,8 +37,20 @@ const SettingItem = ({ icon: Icon, title, description, onClick }: any) => (
   </div>
 );
 
-export const Settings = () => {
+export const Settings = ({ role }: { role: string }) => {
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState({
+    name: 'John Doe',
+    email: 'john.doe@alakara.ac.ke',
+    phone: '+254 712 345 678',
+    role: 'Principal',
+    bio: 'Dedicated educator with 15 years of experience in school administration.'
+  });
+  const [passwordData, setPasswordData] = useState({
+    current: '',
+    new: '',
+    confirm: ''
+  });
   const [gradingSystem, setGradingSystem] = useState([
     { grade: 'A', min: 80, max: 100, points: 12, remarks: 'Plain' },
     { grade: 'A-', min: 75, max: 79, points: 11, remarks: 'Minus' },
@@ -68,6 +80,16 @@ export const Settings = () => {
     setGradingSystem(newSystem);
   };
 
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleApplyChanges = () => {
+    setShowSuccess(true);
+    setTimeout(() => {
+      setShowSuccess(false);
+      setActiveModal(null);
+    }, 1500);
+  };
+
   const renderModal = () => {
     if (!activeModal) return null;
 
@@ -88,6 +110,106 @@ export const Settings = () => {
           </div>
 
           <div className="p-8 max-h-[60vh] overflow-y-auto">
+            {activeModal === 'profile' && (
+              <div className="space-y-6">
+                <div className="flex justify-center mb-6">
+                  <div className="relative group">
+                    <div className="w-24 h-24 rounded-full bg-kenya-green/10 border-4 border-white shadow-md flex items-center justify-center text-kenya-green text-3xl font-bold">
+                      JD
+                    </div>
+                    <button type="button" className="absolute bottom-0 right-0 p-2 bg-kenya-green text-white rounded-full shadow-lg hover:scale-110 transition-transform">
+                      <ImageIcon size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
+                    <input 
+                      type="text" 
+                      value={profileData.name}
+                      onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-kenya-green/20 outline-none font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={profileData.email}
+                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-kenya-green/20 outline-none font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
+                    <input 
+                      type="text" 
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-kenya-green/20 outline-none font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeModal === 'security' && (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Current Password</label>
+                    <input 
+                      type="password" 
+                      value={passwordData.current}
+                      onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-kenya-green/20 outline-none font-medium"
+                    />
+                  </div>
+                  <div className="h-px bg-slate-100 my-2" />
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">New Password</label>
+                    <input 
+                      type="password" 
+                      value={passwordData.new}
+                      onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-kenya-green/20 outline-none font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Confirm New Password</label>
+                    <input 
+                      type="password" 
+                      value={passwordData.confirm}
+                      onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-kenya-green/20 outline-none font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeModal === 'notifications' && (
+              <div className="space-y-6">
+                {[
+                  { title: 'Email Notifications', desc: 'Receive daily summaries and important alerts via email.' },
+                  { title: 'System Messages', desc: 'Get notified about messages from Principal or Admins.' },
+                  { title: 'Exam Alerts', desc: 'Notifications when exams are created or processed.' },
+                  { title: 'Resource Updates', desc: 'Alerts when new resources are shared in your subjects.' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{item.title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                    </div>
+                    <div className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-kenya-green">
+                      <span className="translate-x-5 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {activeModal === 'grading-system' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -187,7 +309,7 @@ export const Settings = () => {
               </div>
             )}
 
-            {activeModal !== 'grading-system' && activeModal !== 'school-profile' && (
+            {activeModal !== 'grading-system' && activeModal !== 'school-profile' && activeModal !== 'profile' && activeModal !== 'security' && activeModal !== 'notifications' && (
               <div className="py-12 text-center space-y-4">
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
                   <SettingsIcon size={32} />
@@ -208,11 +330,21 @@ export const Settings = () => {
               Cancel
             </button>
             <button 
-              onClick={() => setActiveModal(null)}
-              className="px-8 py-3 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/10 hover:bg-kenya-green/90 transition-all flex items-center gap-2"
+              onClick={handleApplyChanges}
+              disabled={showSuccess}
+              className="px-8 py-3 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/10 hover:bg-kenya-green/90 transition-all flex items-center gap-2 disabled:bg-emerald-600"
             >
-              <CheckCircle2 size={20} />
-              Apply Changes
+              {showSuccess ? (
+                <>
+                  <CheckCircle2 size={20} />
+                  Changes Applied!
+                </>
+              ) : (
+                <>
+                  <Save size={20} />
+                  Apply Changes
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -251,38 +383,40 @@ export const Settings = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-slate-100">
-          <h2 className="text-xl font-bold text-slate-900">School Configuration</h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">System-wide settings for Alakara School</p>
+      {role !== 'student' && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-8 border-b border-slate-100">
+            <h2 className="text-xl font-bold text-slate-900">School Configuration</h2>
+            <p className="text-sm text-slate-500 font-medium mt-1">System-wide settings for Alakara School</p>
+          </div>
+          <div className="divide-y divide-slate-100">
+            <SettingItem 
+              icon={School} 
+              title="School Profile" 
+              description="Edit school name, logo, and contact details" 
+              onClick={() => setActiveModal('school-profile')}
+            />
+            <SettingItem 
+              icon={Database} 
+              title="Academic Structure" 
+              description="Manage classes, streams, and subjects" 
+              onClick={() => setActiveModal('academic-structure')}
+            />
+            <SettingItem 
+              icon={Palette} 
+              title="Grading System" 
+              description="Define and adjust grade ranges and points" 
+              onClick={() => setActiveModal('grading-system')}
+            />
+            <SettingItem 
+              icon={Globe} 
+              title="Regional Settings" 
+              description="Set time zone, currency, and language" 
+              onClick={() => setActiveModal('regional')}
+            />
+          </div>
         </div>
-        <div className="divide-y divide-slate-100">
-          <SettingItem 
-            icon={School} 
-            title="School Profile" 
-            description="Edit school name, logo, and contact details" 
-            onClick={() => setActiveModal('school-profile')}
-          />
-          <SettingItem 
-            icon={Database} 
-            title="Academic Structure" 
-            description="Manage classes, streams, and subjects" 
-            onClick={() => setActiveModal('academic-structure')}
-          />
-          <SettingItem 
-            icon={Palette} 
-            title="Grading System" 
-            description="Define and adjust grade ranges and points" 
-            onClick={() => setActiveModal('grading-system')}
-          />
-          <SettingItem 
-            icon={Globe} 
-            title="Regional Settings" 
-            description="Set time zone, currency, and language" 
-            onClick={() => setActiveModal('regional')}
-          />
-        </div>
-      </div>
+      )}
 
       <div className="flex items-center justify-end gap-4">
         <button className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all">
