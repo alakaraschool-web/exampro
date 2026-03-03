@@ -15,20 +15,20 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabaseService } from '../services/supabaseService';
+import { Exam, Subject, Profile, Mark } from '../types';
 
 export const MarksEntry = () => {
-  const [loading, setLoading] = useState(true);
-  const [classes, setClasses] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [exams, setExams] = useState<any[]>([]);
-  const [students, setStudents] = useState<any[]>([]);
+  const [selectedClass, setSelectedClass] = useState('Form 4 Red');
+  const [selectedSubject, setSelectedSubject] = useState('Mathematics');
+  const [selectedExam, setSelectedExam] = useState('Term 1 End-Term');
   
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedExam, setSelectedExam] = useState('');
-  
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [students, setStudents] = useState<Profile[]>([]);
   const [scores, setScores] = useState<Record<string, string>>({});
+  
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
@@ -42,24 +42,16 @@ export const MarksEntry = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const [classesRes, subjectsRes, examsRes] = await Promise.all([
-        supabase.from('classes').select('*').order('name'),
-        supabase.from('subjects').select('*').order('name'),
-        supabase.from('exams').select('*').order('created_at', { ascending: false })
+      const schoolId = 'placeholder-school-id';
+      const [examsData, subjectsData] = await Promise.all([
+        supabaseService.getExams(schoolId),
+        supabaseService.getSubjects(schoolId)
       ]);
-
-      if (classesRes.data) {
-        setClasses(classesRes.data);
-        if (classesRes.data.length > 0) setSelectedClass(classesRes.data[0].id);
-      }
-      if (subjectsRes.data) {
-        setSubjects(subjectsRes.data);
-        if (subjectsRes.data.length > 0) setSelectedSubject(subjectsRes.data[0].id);
-      }
-      if (examsRes.data) {
-        setExams(examsRes.data);
-        if (examsRes.data.length > 0) setSelectedExam(examsRes.data[0].id);
-      }
+      setExams(examsData || []);
+      setSubjects(subjectsData || []);
+      
+      if (examsData && examsData.length > 0) setSelectedExam(examsData[0].id);
+      if (subjectsData && subjectsData.length > 0) setSelectedSubject(subjectsData[0].id);
     } catch (error) {
       console.error('Error fetching initial data:', error);
     } finally {
@@ -67,40 +59,24 @@ export const MarksEntry = () => {
     }
   };
 
-  const loadList = async () => {
-    if (!selectedClass || !selectedSubject || !selectedExam) return;
+  const loadStudentList = async () => {
     setLoading(true);
     try {
-      // Fetch students in class
-      const { data: studentsData } = await supabase
-        .from('students')
-        .select('*, profiles(full_name)')
-        .eq('class_id', selectedClass);
-
+      const schoolId = 'placeholder-school-id';
+      const studentsData = await supabaseService.getStudents(schoolId);
+      setStudents(studentsData || []);
+      
       // Fetch existing marks
-      const { data: marksData } = await supabase
-        .from('marks')
-        .select('*')
-        .eq('exam_id', selectedExam)
-        .eq('subject_id', selectedSubject);
-
-      if (studentsData) {
-        setStudents(studentsData.map(s => ({
-          id: s.id,
-          name: s.profiles?.full_name,
-          admission_no: s.admission_number,
-          current_score: marksData?.find(m => m.student_id === s.id)?.score || ''
-        })));
-
-        const initialScores: Record<string, string> = {};
-        studentsData.forEach(s => {
-          const mark = marksData?.find(m => m.student_id === s.id);
-          initialScores[s.id] = mark ? mark.score.toString() : '';
+      if (selectedExam && selectedSubject) {
+        const marksData = await supabaseService.getMarks(selectedExam, selectedSubject);
+        const marksMap: Record<string, string> = {};
+        marksData?.forEach((m: Mark) => {
+          marksMap[m.student_id] = m.score.toString();
         });
-        setScores(initialScores);
+        setScores(marksMap);
       }
     } catch (error) {
-      console.error('Error loading list:', error);
+      console.error('Error loading students:', error);
     } finally {
       setLoading(false);
     }
@@ -116,27 +92,15 @@ export const MarksEntry = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const marksToSave = Object.entries(scores)
-        .filter(([_, score]) => score !== '')
-        .map(([studentId, score]) => ({
-          student_id: studentId,
-          subject_id: selectedSubject,
-          exam_id: selectedExam,
-          score: parseFloat(score as string)
-        }));
-
-      // In a real app, you'd use an upsert or handle conflicts
-      // For now, let's delete existing and insert new
-      await supabase.from('marks')
-        .delete()
-        .eq('exam_id', selectedExam)
-        .eq('subject_id', selectedSubject)
-        .in('student_id', Object.keys(scores));
-
-      if (marksToSave.length > 0) {
-        await supabase.from('marks').insert(marksToSave);
-      }
-
+      const marksToSave = Object.entries(scores).map(([studentId, score]) => ({
+        student_id: studentId,
+        exam_id: selectedExam,
+        subject_id: selectedSubject,
+        score: Number(score),
+        entered_by: 'placeholder-teacher-id' // In a real app, get from auth session
+      }));
+      
+      await supabaseService.saveMarks(marksToSave);
       setSaved(true);
       setTimeout(() => navigate('/exams'), 1000);
     } catch (error) {
@@ -193,9 +157,9 @@ export const MarksEntry = () => {
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-kenya-green/20 transition-all"
             >
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name} {c.stream}</option>
-              ))}
+              <option>Form 4 Red</option>
+              <option>Form 4 Blue</option>
+              <option>Form 3 Green</option>
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
@@ -235,10 +199,11 @@ export const MarksEntry = () => {
 
         <div className="flex items-end h-full pt-6">
           <button 
-            onClick={loadList}
-            className="bg-kenya-green text-white font-bold px-6 py-2.5 rounded-xl hover:bg-kenya-green/90 transition-all active:scale-95"
+            onClick={loadStudentList}
+            disabled={loading}
+            className="bg-kenya-green text-white font-bold px-6 py-2.5 rounded-xl hover:bg-kenya-green/90 transition-all active:scale-95 disabled:bg-kenya-green/50"
           >
-            Load List
+            {loading ? 'Loading...' : 'Load List'}
           </button>
         </div>
       </div>
@@ -371,24 +336,24 @@ export const MarksEntry = () => {
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold group-hover:bg-kenya-green/10 group-hover:text-kenya-green transition-colors">
-                      {student.name.split(' ').map(n => n[0]).join('')}
+                      {student.full_name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900">{student.name}</h4>
+                      <h4 className="text-sm font-bold text-slate-900">{student.full_name}</h4>
                       <p className="text-xs text-slate-500 font-medium">Regular Student</p>
                     </div>
                   </div>
                 </td>
                 <td className="px-8 py-5">
-                  <span className="text-sm font-mono text-slate-600 font-medium">{student.admission_no}</span>
+                  <span className="text-sm font-mono text-slate-600 font-medium">{student.admission_no || 'N/A'}</span>
                 </td>
                 <td className="px-8 py-5 text-center">
-                  <span className="text-sm font-bold text-slate-400">{student.current_score}</span>
+                  <span className="text-sm font-bold text-slate-400">-</span>
                 </td>
                 <td className="px-8 py-5">
                   <input 
                     type="number" 
-                    value={scores[student.id]}
+                    value={scores[student.id] || ''}
                     onChange={(e) => handleScoreChange(student.id, e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all text-center"
                     placeholder="0-100"
@@ -426,10 +391,15 @@ export const MarksEntry = () => {
         <div className="flex items-center gap-6">
           <div className="text-right">
             <span className="block text-[10px] text-kenya-green/60 font-bold uppercase tracking-wider">Completed</span>
-            <span className="text-lg font-bold text-kenya-green">6/6</span>
+            <span className="text-lg font-bold text-kenya-green">
+              {Object.keys(scores).filter(id => scores[id]).length}/{students.length}
+            </span>
           </div>
           <div className="w-32 h-2 bg-kenya-green/20 rounded-full overflow-hidden">
-            <div className="h-full bg-kenya-green rounded-full" style={{ width: '100%' }} />
+            <div 
+              className="h-full bg-kenya-green rounded-full transition-all duration-500" 
+              style={{ width: `${(Object.keys(scores).filter(id => scores[id]).length / (students.length || 1)) * 100}%` }} 
+            />
           </div>
         </div>
       </div>
