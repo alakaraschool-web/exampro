@@ -134,12 +134,21 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-100">
+          <div className="mt-8 pt-8 border-t border-slate-100 space-y-4">
             <div className="bg-kenya-green/5 p-4 rounded-2xl flex gap-3">
               <AlertCircle className="text-kenya-green shrink-0" size={20} />
               <div className="text-xs text-kenya-green font-medium leading-relaxed">
                 <span className="font-bold">Demo Access:</span> Use <span className="font-bold">admin@school.com</span>, <span className="font-bold">principal@school.com</span>, <span className="font-bold">teacher@school.com</span> or <span className="font-bold">student@school.com</span> with any password.
               </div>
+            </div>
+            
+            <div className="text-center">
+              <button 
+                onClick={() => navigate('/setup')}
+                className="text-xs font-bold text-slate-400 hover:text-kenya-green transition-colors uppercase tracking-widest"
+              >
+                System Initialization (Setup Admin)
+              </button>
             </div>
           </div>
         </div>
