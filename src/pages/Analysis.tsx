@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Trophy, 
   Medal, 
@@ -11,17 +11,61 @@ import {
   Award,
   BarChart3
 } from 'lucide-react';
+import { supabaseService } from '../services/supabaseService';
+import { Exam, ProcessedResult } from '../types';
 
 export const Analysis = () => {
   const [activeTab, setActiveTab] = useState('merit');
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [selectedExam, setSelectedExam] = useState<string>('');
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const topStudents = [
-    { rank: 1, name: 'Alice Johnson', class: 'Form 4 Red', score: 482, grade: 'A', trend: 'up' },
-    { rank: 2, name: 'Bob Smith', class: 'Form 4 Blue', score: 475, grade: 'A', trend: 'up' },
-    { rank: 3, name: 'Charlie Brown', class: 'Form 4 Red', score: 468, grade: 'A-', trend: 'down' },
-    { rank: 4, name: 'David Wilson', class: 'Form 4 Green', score: 462, grade: 'A-', trend: 'up' },
-    { rank: 5, name: 'Eva Green', class: 'Form 4 Blue', score: 458, grade: 'B+', trend: 'up' },
-  ];
+  useEffect(() => {
+    fetchExams();
+  }, []);
+
+  useEffect(() => {
+    if (selectedExam) {
+      fetchResults();
+    }
+  }, [selectedExam]);
+
+  const fetchExams = async () => {
+    try {
+      const schoolId = 'placeholder-school-id';
+      const data = await supabaseService.getExams(schoolId);
+      setExams(data || []);
+      if (data && data.length > 0) {
+        setSelectedExam(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching exams:', error);
+    }
+  };
+
+  const fetchResults = async () => {
+    setLoading(true);
+    try {
+      const data = await supabaseService.getProcessedResults(selectedExam);
+      setResults(data || []);
+    } catch (error) {
+      console.error('Error fetching results:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const topStudents = results
+    .sort((a, b) => (b.total_marks || 0) - (a.total_marks || 0))
+    .map((r, i) => ({
+      rank: i + 1,
+      name: r.profiles?.full_name || 'Unknown',
+      class: 'Form 4 Red', // This would come from a join in a real app
+      score: r.total_marks,
+      grade: r.grade,
+      trend: 'up'
+    }));
 
   const subjectChampions = [
     { subject: 'Mathematics', student: 'Alice Johnson', score: 98, class: 'Form 4 Red' },
@@ -47,10 +91,14 @@ export const Analysis = () => {
           <p className="text-slate-500 font-medium mt-1">Detailed performance insights and rankings.</p>
         </div>
         <div className="flex items-center gap-3">
-          <select className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 font-bold text-slate-700">
-            <option>End Term 1 2024</option>
-            <option>Mid Term 1 2024</option>
-            <option>End Term 3 2023</option>
+          <select 
+            value={selectedExam}
+            onChange={(e) => setSelectedExam(e.target.value)}
+            className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 font-bold text-slate-700"
+          >
+            {exams.map(exam => (
+              <option key={exam.id} value={exam.id}>{exam.name}</option>
+            ))}
           </select>
           <button className="bg-kenya-green text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-kenya-green/10 hover:bg-kenya-green/90 transition-all">
             Export Analysis

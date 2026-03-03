@@ -13,6 +13,7 @@ export interface Profile {
   id: string;
   school_id: string;
   full_name: string;
+  admission_no?: string;
   role: UserRole;
   photo_url?: string;
   created_at: string;

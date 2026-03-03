@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Plus, 
@@ -20,6 +20,8 @@ import {
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { supabaseService } from '../services/supabaseService';
+import { Profile } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,54 +34,77 @@ export const Students = ({ role }: { role?: string }) => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [newStudent, setNewStudent] = useState({ name: '', admission_no: '', class: 'Form 4 Red' });
+  const [students, setStudents] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [allStudents, setAllStudents] = useState([
-    { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', class: 'Form 4 Red', performance: 'Excellent', avatar: 'SJ', teacher: 'teacher@school.com' },
-    { id: '2', name: 'Michael Chen', admission_no: 'ADM-002', class: 'Form 4 Blue', performance: 'Good', avatar: 'MC', teacher: 'other@school.com' },
-    { id: '3', name: 'Amara Okafor', admission_no: 'ADM-003', class: 'Form 3 Green', performance: 'Outstanding', avatar: 'AO', teacher: 'teacher@school.com' },
-    { id: '4', name: 'David Smith', admission_no: 'ADM-004', class: 'Form 4 Red', performance: 'Average', avatar: 'DS', teacher: 'teacher@school.com' },
-    { id: '5', name: 'Emma Wilson', admission_no: 'ADM-005', class: 'Form 2 Blue', performance: 'Good', avatar: 'EW', teacher: 'other@school.com' },
-    { id: '6', name: 'James Brown', admission_no: 'ADM-006', class: 'Form 1 Red', performance: 'Good', avatar: 'JB', teacher: 'other@school.com' },
-  ]);
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
-  const students = role === 'teacher' 
-    ? allStudents.filter(s => s.teacher === 'teacher@school.com')
-    : allStudents;
-
-  const handleAddStudent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingStudent) {
-      setAllStudents(allStudents.map(s => s.id === editingStudent.id ? { ...editingStudent, ...newStudent, avatar: newStudent.name.split(' ').map(n => n[0]).join('') } : s));
-      setEditingStudent(null);
-    } else {
-      const id = (allStudents.length + 1).toString();
-      const avatar = newStudent.name.split(' ').map(n => n[0]).join('');
-      setAllStudents([...allStudents, { ...newStudent, id, performance: 'N/A', avatar, teacher: 'teacher@school.com' }]);
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const schoolId = 'placeholder-school-id';
+      const data = await supabaseService.getStudents(schoolId);
+      setStudents(data || []);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    } finally {
+      setLoading(false);
     }
-    setShowAddModal(false);
-    setNewStudent({ name: '', admission_no: '', class: 'Form 4 Red' });
+  };
+
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const schoolId = 'placeholder-school-id';
+      if (editingStudent) {
+        await supabaseService.updateProfile(editingStudent.id, {
+          full_name: newStudent.name,
+          admission_no: newStudent.admission_no,
+        });
+      } else {
+        await supabaseService.createProfile({
+          school_id: schoolId,
+          full_name: newStudent.name,
+          admission_no: newStudent.admission_no,
+          role: 'student' as any
+        });
+      }
+      fetchStudents();
+      setShowAddModal(false);
+      setNewStudent({ name: '', admission_no: '', class: 'Form 4 Red' });
+      setEditingStudent(null);
+    } catch (error) {
+      console.error('Error saving student:', error);
+    }
   };
 
   const handleEditStudent = (student: any) => {
     setEditingStudent(student);
     setNewStudent({
-      name: student.name,
-      admission_no: student.admission_no,
-      class: student.class
+      name: student.full_name,
+      admission_no: student.admission_no || '',
+      class: 'Form 4 Red'
     });
     setShowAddModal(true);
   };
 
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this student?')) {
-      setAllStudents(allStudents.filter(s => s.id !== id));
+      try {
+        await supabaseService.deleteProfile(id);
+        fetchStudents();
+      } catch (error) {
+        console.error('Error deleting student:', error);
+      }
     }
   };
 
   const handleExport = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
-      + "Name,Admission No,Class,Performance\n"
-      + students.map(s => `${s.name},${s.admission_no},${s.class},${s.performance}`).join("\n");
+      + "Name,Admission No,Class\n"
+      + students.map(s => `${s.full_name},${s.admission_no || 'N/A'},Form 4 Red`).join("\n");
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -177,29 +202,25 @@ export const Students = ({ role }: { role?: string }) => {
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold group-hover:bg-kenya-green/10 group-hover:text-kenya-green transition-colors">
-                      {student.avatar}
+                      {student.full_name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900">{student.name}</h4>
+                      <h4 className="text-sm font-bold text-slate-900">{student.full_name}</h4>
                       <p className="text-xs text-slate-500 font-medium">Regular Student</p>
                     </div>
                   </div>
                 </td>
                 <td className="px-8 py-5">
-                  <span className="text-sm font-mono text-slate-600 font-medium">{student.admission_no}</span>
+                  <span className="text-sm font-mono text-slate-600 font-medium">{student.admission_no || 'N/A'}</span>
                 </td>
                 <td className="px-8 py-5">
-                  <span className="text-sm font-bold text-slate-700">{student.class}</span>
+                  <span className="text-sm font-bold text-slate-700">Form 4 Red</span>
                 </td>
                 <td className="px-8 py-5">
                   <span className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-bold",
-                    student.performance === 'Outstanding' ? "bg-emerald-50 text-emerald-600" :
-                    student.performance === 'Excellent' ? "bg-kenya-green/10 text-kenya-green" :
-                    student.performance === 'Good' ? "bg-amber-50 text-amber-600" :
-                    "bg-slate-50 text-slate-600"
+                    "px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-50 text-slate-600"
                   )}>
-                    {student.performance}
+                    N/A
                   </span>
                 </td>
                 <td className="px-8 py-5 text-right">

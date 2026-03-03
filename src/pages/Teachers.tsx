@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Plus, 
@@ -17,6 +17,8 @@ import {
   ClipboardList,
   Settings
 } from 'lucide-react';
+import { supabaseService } from '../services/supabaseService';
+import { Profile } from '../types';
 
 export const Teachers = ({ role }: { role?: string }) => {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -30,12 +32,25 @@ export const Teachers = ({ role }: { role?: string }) => {
     phone: ''
   });
 
-  const [teachers, setTeachers] = useState([
-    { id: '1', name: 'Dr. Alakara', role: 'Principal', subjects: ['Management'], email: 'principal@school.ac.ke', phone: '+254 712 345 678', avatar: 'DA' },
-    { id: '2', name: 'John Doe', role: 'Senior Teacher', subjects: ['Math', 'Physics'], email: 'john.doe@school.ac.ke', phone: '+254 723 456 789', avatar: 'JD' },
-    { id: '3', name: 'Jane Smith', role: 'Teacher', subjects: ['English', 'History'], email: 'jane.smith@school.ac.ke', phone: '+254 734 567 890', avatar: 'JS' },
-    { id: '4', name: 'Robert Wilson', role: 'Teacher', subjects: ['Biology', 'Chemistry'], email: 'robert.w@school.ac.ke', phone: '+254 745 678 901', avatar: 'RW' },
-  ]);
+  const [teachers, setTeachers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+  const fetchTeachers = async () => {
+    setLoading(true);
+    try {
+      const schoolId = 'placeholder-school-id';
+      const data = await supabaseService.getTeachers(schoolId);
+      setTeachers(data || []);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const generateEmail = (name: string) => {
     if (!name) return '';
@@ -43,34 +58,50 @@ export const Teachers = ({ role }: { role?: string }) => {
     return `${cleanName}@school.ac.ke`;
   };
 
-  const handleAddTeacher = (e: React.FormEvent) => {
+  const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingTeacher) {
-      setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...editingTeacher, ...newTeacher, email: generateEmail(newTeacher.name), avatar: newTeacher.name.split(' ').map(n => n[0]).join('') } : t));
+    try {
+      const schoolId = 'placeholder-school-id';
+      if (editingTeacher) {
+        await supabaseService.updateProfile(editingTeacher.id, {
+          full_name: newTeacher.name,
+          role: newTeacher.role as any,
+        });
+      } else {
+        await supabaseService.createProfile({
+          school_id: schoolId,
+          full_name: newTeacher.name,
+          role: newTeacher.role as any,
+        });
+      }
+      fetchTeachers();
+      setShowAddModal(false);
+      setNewTeacher({ name: '', role: 'Teacher', subjects: [], phone: '' });
       setEditingTeacher(null);
-    } else {
-      const id = (teachers.length + 1).toString();
-      const avatar = newTeacher.name.split(' ').map(n => n[0]).join('');
-      setTeachers([...teachers, { ...newTeacher, id, email: generateEmail(newTeacher.name), avatar }]);
+    } catch (error) {
+      console.error('Error saving teacher:', error);
     }
-    setShowAddModal(false);
-    setNewTeacher({ name: '', role: 'Teacher', subjects: [], phone: '' });
   };
 
   const handleEditTeacher = (teacher: any) => {
     setEditingTeacher(teacher);
     setNewTeacher({
-      name: teacher.name,
+      name: teacher.full_name,
       role: teacher.role,
-      subjects: teacher.subjects,
-      phone: teacher.phone
+      subjects: [],
+      phone: ''
     });
     setShowAddModal(true);
   };
 
-  const handleDeleteTeacher = (id: string) => {
+  const handleDeleteTeacher = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this teacher?')) {
-      setTeachers(teachers.filter(t => t.id !== id));
+      try {
+        await supabaseService.deleteProfile(id);
+        fetchTeachers();
+      } catch (error) {
+        console.error('Error deleting teacher:', error);
+      }
     }
   };
 
@@ -122,7 +153,7 @@ export const Teachers = ({ role }: { role?: string }) => {
             <div className="p-6">
               <div className="flex items-start justify-between mb-6">
                 <div className="w-14 h-14 rounded-2xl bg-kenya-green/10 text-kenya-green flex items-center justify-center text-xl font-bold group-hover:bg-kenya-green group-hover:text-white transition-all shadow-sm">
-                  {teacher.avatar}
+                  {teacher.full_name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div className="flex items-center gap-1">
                   {(role === 'principal' || role === 'super_admin') && (
@@ -151,26 +182,24 @@ export const Teachers = ({ role }: { role?: string }) => {
                 </div>
               </div>
 
-              <h3 className="text-lg font-bold text-slate-900 mb-1">{teacher.name}</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">{teacher.full_name}</h3>
               <p className="text-sm text-slate-500 font-medium mb-6">{teacher.role}</p>
 
               <div className="space-y-3 mb-6">
                 <div className="flex items-center gap-3 text-slate-600">
                   <Mail size={16} className="text-slate-400" />
-                  <span className="text-xs font-medium truncate">{teacher.email}</span>
+                  <span className="text-xs font-medium truncate">{teacher.full_name.toLowerCase().replace(/\s+/g, '.')}@school.ac.ke</span>
                 </div>
                 <div className="flex items-center gap-3 text-slate-600">
                   <Phone size={16} className="text-slate-400" />
-                  <span className="text-xs font-medium">{teacher.phone}</span>
+                  <span className="text-xs font-medium">+254 700 000 000</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {teacher.subjects.map(subject => (
-                  <span key={subject} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                    {subject}
-                  </span>
-                ))}
+                <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                  General
+                </span>
               </div>
             </div>
             

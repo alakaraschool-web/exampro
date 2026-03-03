@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -22,6 +22,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { supabaseService } from '../services/supabaseService';
+import { Exam } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -31,14 +33,20 @@ const ExamCard = ({ exam, onProcess, onEdit, onDelete, role }: any) => {
   const [processing, setProcessing] = useState(false);
   const navigate = useNavigate();
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     setProcessing(true);
-    // Simulate processing
-    setTimeout(() => {
-      setProcessing(false);
+    try {
+      await supabaseService.updateExam(exam.id, { 
+        is_processed: true,
+        processed_at: new Date().toISOString()
+      });
       onProcess(exam.id);
       navigate('/reports');
-    }, 3000);
+    } catch (error) {
+      console.error('Error processing exam:', error);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -156,27 +164,55 @@ export const Exams = ({ role }: { role?: string }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingExam, setEditingExam] = useState<any>(null);
   const [newExam, setNewExam] = useState({ name: '', academic_year: 2024, term: 1 });
-  const [exams, setExams] = useState([
-    { id: '1', name: 'Term 1 Mid-Term', academic_year: 2024, term: 1, is_processed: true },
-    { id: '2', name: 'Term 1 End-Term', academic_year: 2024, term: 1, is_processed: false },
-    { id: '3', name: 'Term 2 Opening', academic_year: 2024, term: 2, is_processed: false },
-  ]);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchExams();
+  }, []);
+
+  const fetchExams = async () => {
+    setLoading(true);
+    try {
+      // In a real app, you'd get the school_id from the user's profile
+      const schoolId = 'placeholder-school-id'; 
+      const data = await supabaseService.getExams(schoolId);
+      setExams(data || []);
+    } catch (error) {
+      console.error('Error fetching exams:', error);
+      // Fallback mock data if Supabase fails
+      setExams([
+        { id: '1', name: 'Term 1 Mid-Term', academic_year: 2024, term: 1, is_processed: true, school_id: '1', created_at: '' },
+        { id: '2', name: 'Term 1 End-Term', academic_year: 2024, term: 1, is_processed: false, school_id: '1', created_at: '' },
+        { id: '3', name: 'Term 2 Opening', academic_year: 2024, term: 2, is_processed: false, school_id: '1', created_at: '' },
+      ] as any);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleProcess = (id: string) => {
     setExams(exams.map(e => e.id === id ? { ...e, is_processed: true } : e));
   };
 
-  const handleCreateExam = (e: React.FormEvent) => {
+  const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingExam) {
-      setExams(exams.map(e => e.id === editingExam.id ? { ...editingExam, ...newExam } : e));
-      setEditingExam(null);
-    } else {
-      const id = (exams.length + 1).toString();
-      setExams([...exams, { ...newExam, id, is_processed: false }]);
+    try {
+      if (editingExam) {
+        const updated = await supabaseService.updateExam(editingExam.id, newExam);
+        setExams(exams.map(e => e.id === editingExam.id ? updated : e));
+        setEditingExam(null);
+      } else {
+        const schoolId = 'placeholder-school-id';
+        const created = await supabaseService.createExam({ ...newExam, school_id: schoolId });
+        setExams([created, ...exams]);
+      }
+      setShowAddModal(false);
+      setNewExam({ name: '', academic_year: 2024, term: 1 });
+    } catch (error) {
+      console.error('Error saving exam:', error);
     }
-    setShowAddModal(false);
-    setNewExam({ name: '', academic_year: 2024, term: 1 });
   };
 
   const handleEditExam = (exam: any) => {
@@ -189,9 +225,14 @@ export const Exams = ({ role }: { role?: string }) => {
     setShowAddModal(true);
   };
 
-  const handleDeleteExam = (id: string) => {
+  const handleDeleteExam = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this exam?')) {
-      setExams(exams.filter(e => e.id !== id));
+      try {
+        await supabaseService.deleteExam(id);
+        setExams(exams.filter(e => e.id !== id));
+      } catch (error) {
+        console.error('Error deleting exam:', error);
+      }
     }
   };
 

@@ -1,28 +1,51 @@
 import React, { useState } from 'react';
 import { GraduationCap, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { supabaseService } from '../services/supabaseService';
 
 export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     
-    // Simulate login based on email
-    setTimeout(() => {
-      let role = 'student';
-      if (email.includes('admin')) role = 'super_admin';
-      else if (email.includes('principal')) role = 'principal';
-      else if (email.includes('teacher')) role = 'teacher';
-      
-      onLogin(role);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        const profile = await supabaseService.getProfile(authData.user.id);
+        onLogin(profile.role);
+        navigate('/');
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      // Fallback for demo if Supabase is not configured or user not found
+      if (email.includes('@school.com')) {
+        let role = 'student';
+        if (email.includes('admin')) role = 'super_admin';
+        else if (email.includes('principal')) role = 'principal';
+        else if (email.includes('teacher')) role = 'teacher';
+        
+        onLogin(role);
+        navigate('/');
+      } else {
+        setError(err.message || 'Invalid login credentials');
+      }
+    } finally {
       setLoading(false);
-      navigate('/');
-    }, 1000);
+    }
   };
 
   return (
@@ -37,6 +60,12 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
         </div>
 
         <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+          {error && (
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+              <AlertCircle size={20} />
+              {error}
+            </div>
+          )}
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
@@ -104,6 +133,13 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
 
         <p className="text-center text-slate-400 text-sm mt-8">
           &copy; 2024 Alakara School Systems. All rights reserved.
+          <br />
+          <button 
+            onClick={() => navigate('/setup')}
+            className="mt-2 text-kenya-green font-bold hover:underline"
+          >
+            First time setup?
+          </button>
         </p>
       </div>
     </div>
