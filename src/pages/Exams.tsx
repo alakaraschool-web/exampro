@@ -14,7 +14,9 @@ import {
   FileSpreadsheet,
   FileText,
   Award,
-  TrendingUp
+  TrendingUp,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
@@ -70,25 +72,33 @@ const ExamCard = ({ exam, onProcess }: any) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           {!exam.is_processed ? (
-            <button 
-              onClick={handleProcess}
-              disabled={processing}
-              className="flex-1 bg-kenya-green hover:bg-kenya-green/90 disabled:bg-kenya-green/50 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              {processing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Play size={18} />
-                  Process Results
-                </>
-              )}
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleProcess}
+                disabled={processing}
+                className="flex-1 bg-kenya-green hover:bg-kenya-green/90 disabled:bg-kenya-green/50 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                {processing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Play size={18} />
+                    Process Results
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={() => navigate('/exams/missing')}
+                className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl transition-colors text-sm"
+              >
+                Missing
+              </button>
+            </div>
           ) : (
             <button 
               onClick={() => navigate('/reports')}
@@ -98,9 +108,16 @@ const ExamCard = ({ exam, onProcess }: any) => {
               View Reports
             </button>
           )}
-          <button className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors">
-            <MoreVertical size={20} />
-          </button>
+          
+          <div className="flex items-center gap-1">
+            <button className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2 rounded-xl transition-colors flex items-center justify-center gap-2 text-xs">
+              <Edit size={14} />
+              Edit Exam
+            </button>
+            <button className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all">
+              <Trash2 size={18} />
+            </button>
+          </div>
         </div>
       </div>
       
@@ -148,16 +165,29 @@ export const Exams = () => {
         </div>
       </div>
 
-      {/* Info Alert */}
-      <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-4">
-        <div className="p-2 bg-white rounded-xl shadow-sm h-fit">
-          <AlertCircle className="text-amber-600" size={20} />
+      {/* Info Alerts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-4">
+          <div className="p-2 bg-white rounded-xl shadow-sm h-fit">
+            <AlertCircle className="text-amber-600" size={20} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-amber-900">Manual Processing Required</h4>
+            <p className="text-xs text-amber-700 font-medium mt-1">
+              Exam results are not automatically processed. Once all marks are entered, the Principal must manually trigger the processing.
+            </p>
+          </div>
         </div>
-        <div>
-          <h4 className="text-sm font-bold text-amber-900">Manual Processing Required</h4>
-          <p className="text-xs text-amber-700 font-medium mt-1">
-            Exam results are not automatically processed. Once all marks are entered, the Principal must manually trigger the processing to generate rankings and merit lists.
-          </p>
+        <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex gap-4">
+          <div className="p-2 bg-white rounded-xl shadow-sm h-fit">
+            <AlertCircle className="text-rose-600" size={20} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-rose-900">Missing Marks Detected</h4>
+            <p className="text-xs text-rose-700 font-medium mt-1">
+              There are 24 students with missing marks in <span className="font-bold">Term 1 End-Term</span>. Processing is disabled until all marks are entered.
+            </p>
+          </div>
         </div>
       </div>
 

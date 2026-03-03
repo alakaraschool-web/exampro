@@ -10,46 +10,77 @@ import {
   TrendingUp,
   Award,
   BookOpen,
-  Calendar
+  Calendar,
+  Layout,
+  CheckCircle2
 } from 'lucide-react';
+import { generateStudentPDF, generateClassPDF } from '../utils/pdfGenerator';
 
-const ReportCardPreview = ({ student }: any) => (
-  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in zoom-in duration-300">
-    <div className="p-8 border-b border-slate-100 bg-slate-50/50">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-2xl bg-kenya-green flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-kenya-green/10">
-            {student.name.split(' ').map((n: string) => n[0]).join('')}
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">{student.name}</h2>
-            <div className="flex flex-wrap items-center gap-4 mt-1">
-              <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
-                <BookOpen size={14} /> {student.class}
-              </span>
-              <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
-                <Award size={14} /> Adm: {student.admission_no}
-              </span>
-              <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
-                <Calendar size={14} /> Term 1 End-Term 2024
-              </span>
+const ReportCardPreview = ({ student, template }: any) => {
+  const handleDownload = () => {
+    const reportData = {
+      name: student.name,
+      admission_no: student.admission_no,
+      class: student.class,
+      term: 'Term 1',
+      year: 2024,
+      subjects: [
+        { subject: 'Mathematics', score: 98, grade: 'A', remarks: 'Excellent' },
+        { subject: 'English', score: 94, grade: 'A', remarks: 'Very Good' },
+        { subject: 'Physics', score: 96, grade: 'A', remarks: 'Outstanding' },
+        { subject: 'Chemistry', score: 97, grade: 'A', remarks: 'Brilliant' },
+        { subject: 'History', score: 97, grade: 'A', remarks: 'Exceptional' },
+      ],
+      summary: {
+        total: '482/500',
+        average: '96.4%',
+        rank: '1/42'
+      },
+      principalRemarks: "Sarah continues to demonstrate exceptional academic prowess. Her dedication to her studies is evident in these results. Keep up the excellent work!"
+    };
+    generateStudentPDF(reportData, template);
+  };
+
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="p-8 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-2xl bg-kenya-green flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-kenya-green/10">
+              {student.name.split(' ').map((n: string) => n[0]).join('')}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">{student.name}</h2>
+              <div className="flex flex-wrap items-center gap-4 mt-1">
+                <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
+                  <BookOpen size={14} /> {student.class}
+                </span>
+                <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
+                  <Award size={14} /> Adm: {student.admission_no}
+                </span>
+                <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
+                  <Calendar size={14} /> Term 1 End-Term 2024
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-            <Printer size={20} />
-          </button>
-          <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-            <Share2 size={20} />
-          </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-kenya-green text-white rounded-xl font-bold hover:bg-kenya-green/90 shadow-lg shadow-kenya-green/10 transition-all active:scale-95">
-            <Download size={20} />
-            Download PDF
-          </button>
+          <div className="flex items-center gap-3">
+            <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+              <Printer size={20} />
+            </button>
+            <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+              <Share2 size={20} />
+            </button>
+            <button 
+              onClick={handleDownload}
+              className="flex items-center gap-2 px-6 py-3 bg-kenya-green text-white rounded-xl font-bold hover:bg-kenya-green/90 shadow-lg shadow-kenya-green/10 transition-all active:scale-95"
+            >
+              <Download size={20} />
+              Download PDF
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
     <div className="p-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -136,12 +167,15 @@ const ReportCardPreview = ({ student }: any) => (
           </div>
         </div>
       </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const Reports = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [template, setTemplate] = useState<'standard' | 'detailed' | 'summary'>('standard');
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
   const students = [
     { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', class: 'Form 4 Red' },
@@ -149,22 +183,80 @@ export const Reports = () => {
     { id: '3', name: 'Amara Okafor', admission_no: 'ADM-003', class: 'Form 3 Green' },
   ];
 
+  const handleBulkDownload = () => {
+    setIsBulkDownloading(true);
+    const mockReports = students.map(s => ({
+      name: s.name,
+      admission_no: s.admission_no,
+      class: s.class,
+      term: 'Term 1',
+      year: 2024,
+      subjects: [
+        { subject: 'Mathematics', score: 85, grade: 'A', remarks: 'Good' },
+        { subject: 'English', score: 78, grade: 'B', remarks: 'Satisfactory' },
+      ],
+      summary: {
+        total: '163/200',
+        average: '81.5%',
+        rank: '5/42'
+      },
+      principalRemarks: "Consistent effort shown. Maintain the focus."
+    }));
+    
+    setTimeout(() => {
+      generateClassPDF(mockReports, 'Form 4 Red', template);
+      setIsBulkDownloading(false);
+    }, 2000);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {!selectedStudent ? (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-              <input 
-                type="text" 
-                placeholder="Search student for report card..." 
-                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              />
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="Search student for report card..." 
+                  className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
+                />
+              </div>
+              <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors">
+                <Filter size={20} />
+              </button>
             </div>
-            <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors">
-              <Filter size={20} />
-            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-white border border-slate-200 rounded-2xl p-1">
+                {(['standard', 'detailed', 'summary'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTemplate(t)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all capitalize ${
+                      template === t 
+                        ? 'bg-kenya-green text-white shadow-lg shadow-kenya-green/20' 
+                        : 'text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <button 
+                onClick={handleBulkDownload}
+                disabled={isBulkDownloading}
+                className="flex items-center gap-2 px-6 py-3 bg-kenya-green text-white rounded-2xl font-bold hover:bg-kenya-green/90 shadow-lg shadow-kenya-green/10 transition-all active:scale-95 disabled:bg-kenya-green/50"
+              >
+                {isBulkDownloading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Download size={20} />
+                )}
+                Bulk PDF
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -202,7 +294,7 @@ export const Reports = () => {
             <ChevronRight size={20} className="rotate-180" />
             Back to Student List
           </button>
-          <ReportCardPreview student={selectedStudent} />
+          <ReportCardPreview student={selectedStudent} template={template} />
         </>
       )}
     </div>

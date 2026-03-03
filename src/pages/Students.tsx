@@ -10,7 +10,10 @@ import {
   Calendar,
   ChevronRight,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Edit,
+  Trash2,
+  Upload
 } from 'lucide-react';
 
 import { clsx, type ClassValue } from 'clsx';
@@ -44,6 +47,10 @@ export const Students = () => {
         <div className="flex items-center gap-3">
           <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors">
             <Filter size={20} />
+          </button>
+          <button className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95">
+            <Upload size={20} />
+            Bulk Import
           </button>
           <button className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95">
             <Plus size={20} />
@@ -104,10 +111,13 @@ export const Students = () => {
                 <td className="px-8 py-5 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all">
-                      <BookOpen size={18} />
+                      <Edit size={18} />
                     </button>
-                    <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-all">
-                      <MoreVertical size={18} />
+                    <button className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all">
+                      <Trash2 size={18} />
+                    </button>
+                    <button className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all">
+                      <BookOpen size={18} />
                     </button>
                   </div>
                 </td>

@@ -9,7 +9,9 @@ import {
   Phone, 
   BookOpen, 
   Calendar,
-  ChevronRight
+  ChevronRight,
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 export const Teachers = () => {
@@ -50,9 +52,14 @@ export const Teachers = () => {
                 <div className="w-14 h-14 rounded-2xl bg-kenya-green/10 text-kenya-green flex items-center justify-center text-xl font-bold group-hover:bg-kenya-green group-hover:text-white transition-all shadow-sm">
                   {teacher.avatar}
                 </div>
-                <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
-                  <MoreVertical size={20} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all">
+                    <Edit size={18} />
+                  </button>
+                  <button className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
 
               <h3 className="text-lg font-bold text-slate-900 mb-1">{teacher.name}</h3>
