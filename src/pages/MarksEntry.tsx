@@ -9,7 +9,10 @@ import {
   ChevronDown,
   User,
   History,
-  Info
+  Info,
+  Download,
+  FileText,
+  X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,6 +34,8 @@ export const MarksEntry = () => {
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkData, setBulkData] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const handleScoreChange = (id: string, value: string) => {
@@ -48,6 +53,41 @@ export const MarksEntry = () => {
       // Navigate back to exams after a short delay
       setTimeout(() => navigate('/exams'), 1000);
     }, 1500);
+  };
+
+  const downloadTemplate = () => {
+    const headers = ['Admission No', 'Student Name', 'Marks (0-100)'];
+    const rows = students.map(s => [s.admission_no, s.name, '']);
+    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `marks_template_${selectedClass}_${selectedSubject}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleBulkImport = () => {
+    // Simulate reading a file
+    const mockImportedData = students.map(s => ({
+      ...s,
+      new_score: Math.floor(Math.random() * 40) + 60 // Random scores for demo
+    }));
+    setBulkData(mockImportedData);
+    setShowBulkConfirm(true);
+  };
+
+  const confirmBulkUpload = () => {
+    const newScores = { ...scores };
+    bulkData.forEach(item => {
+      newScores[item.id] = item.new_score.toString();
+    });
+    setScores(newScores);
+    setShowBulkConfirm(false);
+    setSaved(false);
   };
 
   return (
@@ -121,7 +161,17 @@ export const MarksEntry = () => {
               className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
             />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all">
+          <button 
+            onClick={downloadTemplate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all"
+          >
+            <Download size={18} />
+            Template
+          </button>
+          <button 
+            onClick={handleBulkImport}
+            className="flex items-center gap-2 px-4 py-2.5 bg-kenya-green/10 text-kenya-green border border-kenya-green/20 rounded-xl text-sm font-bold hover:bg-kenya-green/20 transition-all"
+          >
             <Upload size={18} />
             Bulk Import
           </button>
@@ -148,6 +198,67 @@ export const MarksEntry = () => {
           </button>
         </div>
       </div>
+
+      {/* Bulk Confirmation Modal */}
+      {showBulkConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-kenya-green/10 rounded-xl text-kenya-green">
+                  <FileText size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Confirm Bulk Upload</h3>
+                  <p className="text-xs text-slate-500 font-medium">Review the imported marks before applying them to the class.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowBulkConfirm(false)}
+                className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+              >
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[400px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Student</th>
+                    <th className="py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Adm No.</th>
+                    <th className="py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">New Score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {bulkData.map((item) => (
+                    <tr key={item.id}>
+                      <td className="py-3 text-sm font-bold text-slate-700">{item.name}</td>
+                      <td className="py-3 text-sm font-mono text-slate-500">{item.admission_no}</td>
+                      <td className="py-3 text-sm font-bold text-kenya-green text-center">{item.new_score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setShowBulkConfirm(false)}
+                className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl text-sm hover:bg-slate-100 transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmBulkUpload}
+                className="px-8 py-2.5 bg-kenya-green text-white font-bold rounded-xl text-sm hover:bg-kenya-green/90 shadow-lg shadow-kenya-green/10 transition-all active:scale-95"
+              >
+                Confirm & Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Marks Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">

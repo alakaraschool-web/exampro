@@ -26,7 +26,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const ExamCard = ({ exam, onProcess }: any) => {
+const ExamCard = ({ exam, onProcess, role }: any) => {
   const [processing, setProcessing] = useState(false);
   const navigate = useNavigate();
 
@@ -75,23 +75,33 @@ const ExamCard = ({ exam, onProcess }: any) => {
         <div className="flex flex-col gap-2">
           {!exam.is_processed ? (
             <div className="flex gap-2">
-              <button 
-                onClick={handleProcess}
-                disabled={processing}
-                className="flex-1 bg-kenya-green hover:bg-kenya-green/90 disabled:bg-kenya-green/50 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {processing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Play size={18} />
-                    Process Results
-                  </>
-                )}
-              </button>
+              {role === 'principal' || role === 'super_admin' ? (
+                <button 
+                  onClick={handleProcess}
+                  disabled={processing}
+                  className="flex-1 bg-kenya-green hover:bg-kenya-green/90 disabled:bg-kenya-green/50 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  {processing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Play size={18} />
+                      Process Results
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button 
+                  onClick={() => navigate('/marks')}
+                  className="flex-1 bg-kenya-green hover:bg-kenya-green/90 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <FileText size={18} />
+                  Enter Marks
+                </button>
+              )}
               <button 
                 onClick={() => navigate('/exams/missing')}
                 className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl transition-colors text-sm"
@@ -104,26 +114,30 @@ const ExamCard = ({ exam, onProcess }: any) => {
               onClick={() => navigate('/reports')}
               className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
-              <Download size={18} />
-              View Reports
+              <TrendingUp size={18} />
+              View Analysis
             </button>
           )}
           
           <div className="flex items-center gap-1">
-            <button className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2 rounded-xl transition-colors flex items-center justify-center gap-2 text-xs">
-              <Edit size={14} />
-              Edit Exam
-            </button>
-            <button className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all">
-              <Trash2 size={18} />
-            </button>
+            {role !== 'teacher' && (
+              <>
+                <button className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2 rounded-xl transition-colors flex items-center justify-center gap-2 text-xs">
+                  <Edit size={14} />
+                  Edit Exam
+                </button>
+                <button className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all">
+                  <Trash2 size={18} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
       
       {exam.is_processed && (
         <div className="px-6 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between">
-          <span className="text-xs font-bold text-emerald-700">Processed on {new Date().toLocaleDateString()}</span>
+          <span className="text-xs font-bold text-emerald-700">Analysis Ready</span>
           <ChevronRight size={16} className="text-emerald-400" />
         </div>
       )}
@@ -131,7 +145,7 @@ const ExamCard = ({ exam, onProcess }: any) => {
   );
 };
 
-export const Exams = () => {
+export const Exams = ({ role }: { role?: string }) => {
   const [exams, setExams] = useState([
     { id: '1', name: 'Term 1 Mid-Term', academic_year: 2024, term: 1, is_processed: true },
     { id: '2', name: 'Term 1 End-Term', academic_year: 2024, term: 1, is_processed: false },
@@ -158,10 +172,12 @@ export const Exams = () => {
           <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors">
             <Filter size={20} />
           </button>
-          <button className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95">
-            <Plus size={20} />
-            Create Exam
-          </button>
+          {role !== 'teacher' && (
+            <button className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95">
+              <Plus size={20} />
+              Create Exam
+            </button>
+          )}
         </div>
       </div>
 
@@ -194,7 +210,7 @@ export const Exams = () => {
       {/* Exams Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {exams.map(exam => (
-          <ExamCard key={exam.id} exam={exam} onProcess={handleProcess} />
+          <ExamCard key={exam.id} exam={exam} onProcess={handleProcess} role={role} />
         ))}
       </div>
 

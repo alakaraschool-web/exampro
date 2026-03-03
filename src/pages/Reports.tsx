@@ -12,7 +12,8 @@ import {
   BookOpen,
   Calendar,
   Layout,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { generateStudentPDF, generateClassPDF } from '../utils/pdfGenerator';
 
@@ -176,6 +177,11 @@ export const Reports = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [template, setTemplate] = useState<'standard' | 'detailed' | 'summary'>('standard');
   const [isBulkDownloading, setIsBulkDownloading] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkOptions, setBulkOptions] = useState({
+    class: 'Form 4 Red',
+    exams: ['Term 1 End-Term']
+  });
 
   const students = [
     { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', class: 'Form 4 Red' },
@@ -204,13 +210,95 @@ export const Reports = () => {
     }));
     
     setTimeout(() => {
-      generateClassPDF(mockReports, 'Form 4 Red', template);
+      generateClassPDF(mockReports, bulkOptions.class, template);
       setIsBulkDownloading(false);
+      setShowBulkModal(false);
     }, 2000);
   };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Bulk Download Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">Bulk Report Generation</h2>
+                <p className="text-sm text-slate-500 font-medium mt-1">Select parameters for the batch download.</p>
+              </div>
+              <button 
+                onClick={() => setShowBulkModal(false)}
+                className="p-2 hover:bg-white rounded-xl transition-colors text-slate-400 hover:text-slate-600 shadow-sm"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Select Class</label>
+                  <select 
+                    value={bulkOptions.class}
+                    onChange={(e) => setBulkOptions({ ...bulkOptions, class: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-kenya-green/20 outline-none font-bold appearance-none"
+                  >
+                    <option>Form 4 Red</option>
+                    <option>Form 4 Blue</option>
+                    <option>Form 3 Green</option>
+                    <option>Form 2 Blue</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Include Exams</label>
+                  <div className="space-y-2">
+                    {['Term 1 End-Term', 'Term 1 Mid-Term', 'Term 2 Opening'].map(exam => (
+                      <label key={exam} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={bulkOptions.exams.includes(exam)}
+                          onChange={(e) => {
+                            const newExams = e.target.checked 
+                              ? [...bulkOptions.exams, exam]
+                              : bulkOptions.exams.filter(ex => ex !== exam);
+                            setBulkOptions({ ...bulkOptions, exams: newExams });
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-kenya-green focus:ring-kenya-green" 
+                        />
+                        <span className="text-xs font-bold text-slate-700">{exam}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-4">
+                <button 
+                  onClick={() => setShowBulkModal(false)}
+                  className="flex-1 px-6 py-4 border border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBulkDownload}
+                  disabled={isBulkDownloading || bulkOptions.exams.length === 0}
+                  className="flex-1 px-6 py-4 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/20 hover:bg-kenya-green/90 transition-all flex items-center justify-center gap-2 disabled:bg-kenya-green/50"
+                >
+                  {isBulkDownloading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Download size={20} />
+                  )}
+                  Generate Batch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!selectedStudent ? (
         <>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -245,15 +333,10 @@ export const Reports = () => {
                 ))}
               </div>
               <button 
-                onClick={handleBulkDownload}
-                disabled={isBulkDownloading}
-                className="flex items-center gap-2 px-6 py-3 bg-kenya-green text-white rounded-2xl font-bold hover:bg-kenya-green/90 shadow-lg shadow-kenya-green/10 transition-all active:scale-95 disabled:bg-kenya-green/50"
+                onClick={() => setShowBulkModal(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-kenya-green text-white rounded-2xl font-bold hover:bg-kenya-green/90 shadow-lg shadow-kenya-green/10 transition-all active:scale-95"
               >
-                {isBulkDownloading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Download size={20} />
-                )}
+                <Download size={20} />
                 Bulk PDF
               </button>
             </div>

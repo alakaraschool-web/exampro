@@ -6,6 +6,7 @@ import { Exams } from './pages/Exams';
 import { MissingMarks } from './pages/MissingMarks';
 import { MarksEntry } from './pages/MarksEntry';
 import { Reports } from './pages/Reports';
+import { Resources } from './pages/Resources';
 import { Teachers } from './pages/Teachers';
 import { Students } from './pages/Students';
 import { Subjects } from './pages/Subjects';
@@ -21,6 +22,10 @@ export default function App() {
     setUserRole(role);
   };
 
+  const handleLogout = () => {
+    setUserRole(null);
+  };
+
   if (!userRole) {
     return (
       <Router>
@@ -34,15 +39,16 @@ export default function App() {
 
   return (
     <Router>
-      <DashboardLayout role={userRole}>
+      <DashboardLayout role={userRole} onLogout={handleLogout}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/exams" element={<Exams />} />
+          <Route path="/" element={<Dashboard role={userRole} />} />
+          <Route path="/exams" element={<Exams role={userRole} />} />
           <Route path="/exams/missing" element={<MissingMarks />} />
           <Route path="/marks" element={<MarksEntry />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/teachers" element={<Teachers />} />
-          <Route path="/students" element={<Students />} />
+          <Route path="/resources" element={<Resources role={userRole} />} />
+          <Route path="/teachers" element={<Teachers role={userRole} />} />
+          <Route path="/students" element={<Students role={userRole} />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/classes" element={<Classes />} />
           <Route path="/schools" element={<Schools />} />

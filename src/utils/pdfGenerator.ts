@@ -63,36 +63,56 @@ export const generateStudentPDF = (student: StudentReport, template: 'standard' 
   }
 
   // Header for Standard and Detailed
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(0, 0, 210, 40, 'F');
-  
-  // Add a small red and gold strip for branding
-  doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-  doc.rect(0, 40, 210, 2, 'F');
-  doc.setFillColor(goldColor[0], goldColor[1], goldColor[2]);
-  doc.rect(0, 42, 210, 1, 'F');
+  // Kenyan Coat of Arms (Top Center Placeholder)
+  doc.setFillColor(240, 240, 240);
+  doc.rect(95, 5, 20, 20, 'F');
+  doc.setFontSize(6);
+  doc.setTextColor(100, 100, 100);
+  doc.text('COAT OF ARMS', 105, 15, { align: 'center' });
 
+  // School Logo (Left Placeholder)
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(20, 10, 25, 25, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
-  doc.text('ALAKARA SECONDARY SCHOOL', 105, 15, { align: 'center' });
-  doc.setFontSize(10);
-  doc.text('P.O. BOX 123-00100, NAIROBI • TEL: +254 700 000 000', 105, 22, { align: 'center' });
-  doc.text('OFFICIAL ACADEMIC REPORT CARD', 105, 30, { align: 'center' });
+  doc.setFontSize(8);
+  doc.text('LOGO', 32.5, 23, { align: 'center' });
+
+  // Student Photo (Right Placeholder)
+  doc.setFillColor(230, 230, 230);
+  doc.rect(165, 10, 25, 30, 'F');
+  doc.setTextColor(150, 150, 150);
+  doc.text('PHOTO', 177.5, 25, { align: 'center' });
+
+  // School Details (Center)
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ALAKARA SECONDARY SCHOOL', 105, 35, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('P.O. BOX 123-00100, NAIROBI • TEL: +254 700 000 000', 105, 40, { align: 'center' });
+  doc.text('Email: info@alakara.ac.ke • Website: www.alakara.ac.ke', 105, 44, { align: 'center' });
+
+  doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+  doc.rect(20, 48, 170, 0.5, 'F');
+  
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('OFFICIAL ACADEMIC REPORT CARD', 105, 55, { align: 'center' });
 
   // Student Info
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`NAME: ${student.name.toUpperCase()}`, 20, 55);
-  doc.text(`ADM NO: ${student.admission_no}`, 140, 55);
-  doc.text(`CLASS: ${student.class}`, 20, 63);
-  doc.text(`TERM: ${student.term} ${student.year}`, 140, 63);
+  doc.setFontSize(10);
+  doc.text(`NAME: ${student.name.toUpperCase()}`, 20, 65);
+  doc.text(`ADM NO: ${student.admission_no}`, 140, 65);
+  doc.text(`CLASS: ${student.class}`, 20, 72);
+  doc.text(`TERM: ${student.term} ${student.year}`, 140, 72);
 
   // Table
   const tableData = student.subjects.map(s => [s.subject, s.score, s.grade, s.remarks]);
   
   (doc as any).autoTable({
-    startY: 70,
+    startY: 80,
     head: [['SUBJECT', 'SCORE', 'GRADE', 'REMARKS']],
     body: tableData,
     theme: template === 'detailed' ? 'grid' : 'striped',
@@ -189,35 +209,56 @@ export const generateClassPDF = (students: StudentReport[], className: string, t
     }
 
     // Header for Standard and Detailed
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-    doc.rect(0, 40, 210, 2, 'F');
-    doc.setFillColor(goldColor[0], goldColor[1], goldColor[2]);
-    doc.rect(0, 42, 210, 1, 'F');
+    // Kenyan Coat of Arms (Top Center Placeholder)
+    doc.setFillColor(240, 240, 240);
+    doc.rect(95, 5, 20, 20, 'F');
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.text('COAT OF ARMS', 105, 15, { align: 'center' });
 
+    // School Logo (Left Placeholder)
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(20, 10, 25, 25, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.text('ALAKARA SECONDARY SCHOOL', 105, 15, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text('P.O. BOX 123-00100, NAIROBI • TEL: +254 700 000 000', 105, 22, { align: 'center' });
-    doc.text('OFFICIAL ACADEMIC REPORT CARD', 105, 30, { align: 'center' });
+    doc.setFontSize(8);
+    doc.text('LOGO', 32.5, 23, { align: 'center' });
+
+    // Student Photo (Right Placeholder)
+    doc.setFillColor(230, 230, 230);
+    doc.rect(165, 10, 25, 30, 'F');
+    doc.setTextColor(150, 150, 150);
+    doc.text('PHOTO', 177.5, 25, { align: 'center' });
+
+    // School Details (Center)
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ALAKARA SECONDARY SCHOOL', 105, 35, { align: 'center' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('P.O. BOX 123-00100, NAIROBI • TEL: +254 700 000 000', 105, 40, { align: 'center' });
+    doc.text('Email: info@alakara.ac.ke • Website: www.alakara.ac.ke', 105, 44, { align: 'center' });
+
+    doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.rect(20, 48, 170, 0.5, 'F');
+    
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OFFICIAL ACADEMIC REPORT CARD', 105, 55, { align: 'center' });
 
     // Student Info
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`NAME: ${student.name.toUpperCase()}`, 20, 55);
-    doc.text(`ADM NO: ${student.admission_no}`, 140, 55);
-    doc.text(`CLASS: ${student.class}`, 20, 63);
-    doc.text(`TERM: ${student.term} ${student.year}`, 140, 63);
+    doc.setFontSize(10);
+    doc.text(`NAME: ${student.name.toUpperCase()}`, 20, 65);
+    doc.text(`ADM NO: ${student.admission_no}`, 140, 65);
+    doc.text(`CLASS: ${student.class}`, 20, 72);
+    doc.text(`TERM: ${student.term} ${student.year}`, 140, 72);
 
     // Table
     const tableData = student.subjects.map(s => [s.subject, s.score, s.grade, s.remarks]);
     
     (doc as any).autoTable({
-      startY: 70,
+      startY: 80,
       head: [['SUBJECT', 'SCORE', 'GRADE', 'REMARKS']],
       body: tableData,
       theme: template === 'detailed' ? 'grid' : 'striped',

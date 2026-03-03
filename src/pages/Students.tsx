@@ -23,39 +23,63 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const Students = () => {
-  const students = [
-    { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', class: 'Form 4 Red', performance: 'Excellent', avatar: 'SJ' },
-    { id: '2', name: 'Michael Chen', admission_no: 'ADM-002', class: 'Form 4 Blue', performance: 'Good', avatar: 'MC' },
-    { id: '3', name: 'Amara Okafor', admission_no: 'ADM-003', class: 'Form 3 Green', performance: 'Outstanding', avatar: 'AO' },
-    { id: '4', name: 'David Smith', admission_no: 'ADM-004', class: 'Form 4 Red', performance: 'Average', avatar: 'DS' },
-    { id: '5', name: 'Emma Wilson', admission_no: 'ADM-005', class: 'Form 2 Blue', performance: 'Good', avatar: 'EW' },
-    { id: '6', name: 'James Brown', admission_no: 'ADM-006', class: 'Form 1 Red', performance: 'Good', avatar: 'JB' },
+export const Students = ({ role }: { role?: string }) => {
+  const isClassTeacher = true; // Mock: assume the teacher is a class teacher for now
+  const canManage = role !== 'teacher' || isClassTeacher;
+
+  const allStudents = [
+    { id: '1', name: 'Sarah Johnson', admission_no: 'ADM-001', class: 'Form 4 Red', performance: 'Excellent', avatar: 'SJ', teacher: 'teacher@school.com' },
+    { id: '2', name: 'Michael Chen', admission_no: 'ADM-002', class: 'Form 4 Blue', performance: 'Good', avatar: 'MC', teacher: 'other@school.com' },
+    { id: '3', name: 'Amara Okafor', admission_no: 'ADM-003', class: 'Form 3 Green', performance: 'Outstanding', avatar: 'AO', teacher: 'teacher@school.com' },
+    { id: '4', name: 'David Smith', admission_no: 'ADM-004', class: 'Form 4 Red', performance: 'Average', avatar: 'DS', teacher: 'teacher@school.com' },
+    { id: '5', name: 'Emma Wilson', admission_no: 'ADM-005', class: 'Form 2 Blue', performance: 'Good', avatar: 'EW', teacher: 'other@school.com' },
+    { id: '6', name: 'James Brown', admission_no: 'ADM-006', class: 'Form 1 Red', performance: 'Good', avatar: 'JB', teacher: 'other@school.com' },
   ];
+
+  const students = role === 'teacher' 
+    ? allStudents.filter(s => s.teacher === 'teacher@school.com')
+    : allStudents;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <input 
-            type="text" 
-            placeholder="Search students..." 
-            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
-          />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {role === 'teacher' ? (isClassTeacher ? 'My Class Students' : 'My Students') : 'Learner Directory'}
+          </h1>
+          <p className="text-sm text-slate-500 font-medium">
+            {role === 'teacher' 
+              ? (isClassTeacher ? 'Manage learners in your assigned class (Form 4 Red).' : 'View learners in your assigned classes.') 
+              : 'Manage all students registered in the system.'}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors">
-            <Filter size={20} />
-          </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95">
-            <Upload size={20} />
-            Bulk Import
-          </button>
-          <button className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95">
-            <Plus size={20} />
-            Add Student
-          </button>
+        
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search students..." 
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button className="p-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors">
+              <Filter size={18} />
+            </button>
+            {canManage && (
+              <>
+                <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all active:scale-95">
+                  <Upload size={18} />
+                  Bulk Import
+                </button>
+                <button className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 text-sm transition-all active:scale-95">
+                  <Plus size={18} />
+                  Add Student
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

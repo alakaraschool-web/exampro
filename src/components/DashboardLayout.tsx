@@ -46,11 +46,16 @@ const SidebarItem = ({ icon: Icon, label, href, active, collapsed }: SidebarItem
   </Link>
 );
 
-export const DashboardLayout = ({ children, role }: { children: React.ReactNode, role: string }) => {
+export const DashboardLayout = ({ children, role, onLogout }: { children: React.ReactNode, role: string, onLogout: () => void }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    onLogout();
+    navigate('/login');
+  };
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/', roles: ['super_admin', 'principal', 'teacher', 'student'] },
@@ -61,7 +66,8 @@ export const DashboardLayout = ({ children, role }: { children: React.ReactNode,
     { icon: BookOpen, label: 'Subjects', href: '/subjects', roles: ['principal'] },
     { icon: ClipboardList, label: 'Exams', href: '/exams', roles: ['principal', 'teacher'] },
     { icon: FileText, label: 'Marks Entry', href: '/marks', roles: ['principal', 'teacher'] },
-    { icon: FileText, label: 'Reports', href: '/reports', roles: ['principal', 'teacher', 'student'] },
+    { icon: FileText, label: 'Reports', href: '/reports', roles: ['principal', 'student'] },
+    { icon: BookOpen, label: 'Resources', href: '/resources', roles: ['super_admin', 'principal', 'teacher', 'student'] },
     { icon: Settings, label: 'Settings', href: '/settings', roles: ['super_admin', 'principal', 'teacher', 'student'] },
   ];
 
@@ -118,7 +124,7 @@ export const DashboardLayout = ({ children, role }: { children: React.ReactNode,
           {/* User Profile / Logout */}
           <div className="p-4 border-t border-slate-100">
             <button 
-              onClick={() => navigate('/login')}
+              onClick={handleLogout}
               className={cn(
                 "flex items-center gap-3 w-full px-4 py-3 rounded-lg text-slate-600 hover:bg-kenya-red/5 hover:text-kenya-red transition-all duration-200",
                 collapsed && "justify-center"
