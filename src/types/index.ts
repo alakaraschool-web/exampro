@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'principal' | 'teacher' | 'student';
+export type UserRole = 'admin' | 'teacher' | 'viewer';
 
 export interface School {
   id: string;
@@ -11,11 +11,11 @@ export interface School {
 
 export interface Profile {
   id: string;
-  school_id: string;
-  full_name: string;
+  school_id?: string;
+  full_name?: string;
   role: UserRole;
-  photo_url?: string;
   created_at: string;
+  schools?: School;
 }
 
 export interface Class {
@@ -23,11 +23,13 @@ export interface Class {
   school_id: string;
   name: string;
   created_at: string;
+  streams?: Stream[];
 }
 
 export interface Stream {
   id: string;
   class_id: string;
+  school_id: string;
   name: string;
   created_at: string;
 }
@@ -40,36 +42,46 @@ export interface Subject {
   created_at: string;
 }
 
+export interface Student {
+  id: string;
+  school_id: string;
+  class_id?: string;
+  stream_id?: string;
+  name: string;
+  admission_number?: string;
+  gender?: 'male' | 'female' | 'other';
+  created_at: string;
+}
+
 export interface Exam {
   id: string;
   school_id: string;
   name: string;
-  academic_year: number;
-  term: number;
-  is_processed: boolean;
-  processed_at?: string;
+  term?: string;
+  year?: number;
+  class_id?: string;
   created_at: string;
 }
 
 export interface Mark {
   id: string;
-  student_id: string;
   exam_id: string;
+  student_id: string;
   subject_id: string;
-  score: number;
-  entered_by: string;
+  school_id: string;
+  score?: number;
+  grade?: string;
   created_at: string;
 }
 
 export interface ProcessedResult {
   id: string;
-  student_id: string;
   exam_id: string;
-  total_marks: number;
-  average_marks: number;
-  rank_in_class: number;
-  rank_in_stream: number;
-  grade: string;
-  remarks?: string;
+  student_id: string;
+  school_id: string;
+  total_score?: number;
+  mean_score?: number;
+  grade?: string;
+  rank?: number;
   created_at: string;
 }

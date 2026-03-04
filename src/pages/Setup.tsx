@@ -32,14 +32,13 @@ export const Setup = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // 2. Create the profile with super_admin role
+        // 2. Update the auto-created profile to super_admin role
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: authData.user.id,
             full_name: fullName,
-            role: 'super_admin',
-            email: email
+            role: 'admin',
           });
 
         if (profileError) throw profileError;

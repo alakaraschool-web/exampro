@@ -63,17 +63,17 @@ export const DashboardLayout = ({ children, role, onLogout }: { children: React.
   };
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/', roles: ['super_admin', 'principal', 'teacher', 'student'] },
-    { icon: SchoolIcon, label: 'Schools', href: '/schools', roles: ['super_admin'] },
-    { icon: Users, label: 'Teachers', href: '/teachers', roles: ['principal'] },
-    { icon: GraduationCap, label: 'Students', href: '/students', roles: ['principal', 'teacher'] },
-    { icon: ClipboardList, label: 'Classes', href: '/classes', roles: ['principal'] },
-    { icon: BookOpen, label: 'Subjects', href: '/subjects', roles: ['principal'] },
-    { icon: ClipboardList, label: 'Exams', href: '/exams', roles: ['principal', 'teacher'] },
-    { icon: FileText, label: 'Marks Entry', href: '/marks', roles: ['principal', 'teacher'] },
-    { icon: FileText, label: 'Reports', href: '/reports', roles: ['principal', 'student'] },
-    { icon: BookOpen, label: 'Resources', href: '/resources', roles: ['super_admin', 'principal', 'teacher', 'student'] },
-    { icon: Settings, label: 'Settings', href: '/settings', roles: ['super_admin', 'principal', 'teacher', 'student'] },
+    { icon: LayoutDashboard, label: 'Dashboard', href: '/', roles: ['admin', 'teacher', 'viewer'] },
+    { icon: SchoolIcon, label: 'Schools', href: '/schools', roles: ['admin'] },
+    { icon: Users, label: 'Teachers', href: '/teachers', roles: ['admin'] },
+    { icon: GraduationCap, label: 'Students', href: '/students', roles: ['admin', 'teacher'] },
+    { icon: ClipboardList, label: 'Classes', href: '/classes', roles: ['admin'] },
+    { icon: BookOpen, label: 'Subjects', href: '/subjects', roles: ['admin'] },
+    { icon: ClipboardList, label: 'Exams', href: '/exams', roles: ['admin', 'teacher'] },
+    { icon: FileText, label: 'Marks Entry', href: '/marks', roles: ['admin', 'teacher'] },
+    { icon: FileText, label: 'Reports', href: '/reports', roles: ['admin', 'viewer'] },
+    { icon: BookOpen, label: 'Resources', href: '/resources', roles: ['admin', 'teacher', 'viewer'] },
+    { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin', 'teacher', 'viewer'] },
   ];
 
   const notifications = [

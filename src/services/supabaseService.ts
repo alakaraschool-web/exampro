@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Profile, School, Class, Subject, Exam, Mark, ProcessedResult, Stream } from '../types';
+import type { Profile, School, Class, Subject, Exam, Mark, ProcessedResult, Stream, Student } from '../types';
 
 export const supabaseService = {
   // Profiles
@@ -17,12 +17,14 @@ export const supabaseService = {
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
-      .eq('id', userId);
+      .eq('id', userId)
+      .select()
+      .single();
     if (error) throw error;
     return data;
   },
 
-  async createProfile(profile: Omit<Profile, 'id' | 'created_at'>) {
+  async createProfile(profile: Partial<Profile> & { id: string }) {
     const { data, error } = await supabase
       .from('profiles')
       .insert([profile])
@@ -41,11 +43,30 @@ export const supabaseService = {
   },
 
   // Schools
+  async getSchools() {
+    const { data, error } = await supabase
+      .from('schools')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
   async getSchool(schoolId: string) {
     const { data, error } = await supabase
       .from('schools')
       .select('*')
       .eq('id', schoolId)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async createSchool(school: Omit<School, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('schools')
+      .insert([school])
+      .select()
       .single();
     if (error) throw error;
     return data;
@@ -61,12 +82,78 @@ export const supabaseService = {
     return data;
   },
 
+  async createClass(cls: Omit<Class, 'id' | 'created_at' | 'streams'>) {
+    const { data, error } = await supabase
+      .from('classes')
+      .insert([cls])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async createStream(stream: Omit<Stream, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('streams')
+      .insert([stream])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   // Subjects
   async getSubjects(schoolId: string) {
     const { data, error } = await supabase
       .from('subjects')
       .select('*')
       .eq('school_id', schoolId);
+    if (error) throw error;
+    return data;
+  },
+
+  async createSubject(subject: Omit<Subject, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('subjects')
+      .insert([subject])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Students
+  async getStudents(schoolId: string, classId?: string, streamId?: string) {
+    let query = supabase
+      .from('students')
+      .select('*')
+      .eq('school_id', schoolId);
+
+    if (classId) query = query.eq('class_id', classId);
+    if (streamId) query = query.eq('stream_id', streamId);
+
+    const { data, error } = await query.order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  async createStudent(student: Omit<Student, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('students')
+      .insert([student])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Teachers (from profiles)
+  async getTeachers(schoolId: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('role', 'teacher');
     if (error) throw error;
     return data;
   },
@@ -82,7 +169,7 @@ export const supabaseService = {
     return data;
   },
 
-  async createExam(exam: Omit<Exam, 'id' | 'created_at' | 'is_processed'>) {
+  async createExam(exam: Omit<Exam, 'id' | 'created_at'>) {
     const { data, error } = await supabase
       .from('exams')
       .insert([exam])
@@ -112,13 +199,13 @@ export const supabaseService = {
   },
 
   // Marks
-  async getMarks(examId: string, subjectId: string, studentIds?: string[]) {
+  async getMarks(examId: string, subjectId?: string, studentIds?: string[]) {
     let query = supabase
       .from('marks')
       .select('*')
-      .eq('exam_id', examId)
-      .eq('subject_id', subjectId);
-    
+      .eq('exam_id', examId);
+
+    if (subjectId) query = query.eq('subject_id', subjectId);
     if (studentIds && studentIds.length > 0) {
       query = query.in('student_id', studentIds);
     }
@@ -131,33 +218,8 @@ export const supabaseService = {
   async saveMarks(marks: Omit<Mark, 'id' | 'created_at'>[]) {
     const { data, error } = await supabase
       .from('marks')
-      .upsert(marks, { onConflict: 'student_id,exam_id,subject_id' });
-    if (error) throw error;
-    return data;
-  },
-
-  // Students
-  async getStudents(schoolId: string, classId?: string, streamId?: string) {
-    let query = supabase
-      .from('profiles')
-      .select('*')
-      .eq('school_id', schoolId)
-      .eq('role', 'student');
-    
-    // Note: In a real app, you'd have a student_classes table or similar
-    // For this schema, we'll assume we can filter by some metadata or join
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    return data;
-  },
-
-  async getTeachers(schoolId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('school_id', schoolId)
-      .neq('role', 'student');
+      .insert(marks)
+      .select();
     if (error) throw error;
     return data;
   },
@@ -166,15 +228,24 @@ export const supabaseService = {
   async getProcessedResults(examId: string, studentId?: string) {
     let query = supabase
       .from('processed_results')
-      .select('*, profiles(*)')
+      .select('*, students(*)')
       .eq('exam_id', examId);
-    
+
     if (studentId) {
       query = query.eq('student_id', studentId);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query.order('rank');
     if (error) throw error;
     return data;
-  }
+  },
+
+  async saveProcessedResults(results: Omit<ProcessedResult, 'id' | 'created_at'>[]) {
+    const { data, error } = await supabase
+      .from('processed_results')
+      .insert(results)
+      .select();
+    if (error) throw error;
+    return data;
+  },
 };

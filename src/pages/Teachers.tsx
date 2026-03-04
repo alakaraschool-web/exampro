@@ -44,7 +44,7 @@ export const Teachers = ({ role }: { role?: string }) => {
       const { data } = await supabase
         .from('profiles')
         .select('*')
-        .in('role', ['teacher', 'principal', 'super_admin']);
+        .in('role', ['teacher', 'admin']);
       
       if (data) {
         setTeachers(data.map(t => ({
@@ -150,7 +150,7 @@ export const Teachers = ({ role }: { role?: string }) => {
           <button className="p-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors">
             <Filter size={20} />
           </button>
-          {(role === 'principal' || role === 'super_admin') && (
+          {role === 'admin' && (
             <button 
               onClick={() => {
                 setEditingTeacher(null);

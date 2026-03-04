@@ -33,9 +33,8 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
 
         if (profileError) {
           // Fallback for demo if profile doesn't exist yet
-          let role = 'student';
-          if (email.includes('admin')) role = 'super_admin';
-          else if (email.includes('principal')) role = 'principal';
+          let role = 'viewer';
+          if (email.includes('admin')) role = 'admin';
           else if (email.includes('teacher')) role = 'teacher';
           onLogin(role);
         } else {
@@ -49,9 +48,8 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
       
       // Fallback for prototype mode if Supabase is not configured
       if (!(import.meta as any).env.VITE_SUPABASE_URL) {
-        let role = 'student';
-        if (email.includes('admin')) role = 'super_admin';
-        else if (email.includes('principal')) role = 'principal';
+        let role = 'viewer';
+        if (email.includes('admin')) role = 'admin';
         else if (email.includes('teacher')) role = 'teacher';
         onLogin(role);
         navigate('/');
