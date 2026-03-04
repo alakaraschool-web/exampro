@@ -14,6 +14,7 @@ import { Settings } from './pages/Settings';
 import { Schools } from './pages/Schools';
 import { Classes } from './pages/Classes';
 import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 import { Setup } from './pages/Setup';
 import { Analysis } from './pages/Analysis';
 import { supabase } from './lib/supabase';
@@ -81,6 +82,7 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/setup" element={<Setup />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
