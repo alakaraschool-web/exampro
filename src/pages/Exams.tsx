@@ -20,10 +20,9 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { supabaseService } from '../services/supabaseService';
-import { Exam } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -36,10 +35,7 @@ const ExamCard = ({ exam, onProcess, onEdit, onDelete, role }: any) => {
   const handleProcess = async () => {
     setProcessing(true);
     try {
-      await supabaseService.updateExam(exam.id, { 
-        is_processed: true,
-        processed_at: new Date().toISOString()
-      });
+      await supabase.from('exams').update({ is_processed: true }).eq('id', exam.id);
       onProcess(exam.id);
       navigate('/reports');
     } catch (error) {
@@ -161,12 +157,12 @@ const ExamCard = ({ exam, onProcess, onEdit, onDelete, role }: any) => {
 };
 
 export const Exams = ({ role }: { role?: string }) => {
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingExam, setEditingExam] = useState<any>(null);
   const [newExam, setNewExam] = useState({ name: '', academic_year: 2024, term: 1 });
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [exams, setExams] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchExams();
@@ -175,18 +171,10 @@ export const Exams = ({ role }: { role?: string }) => {
   const fetchExams = async () => {
     setLoading(true);
     try {
-      // In a real app, you'd get the school_id from the user's profile
-      const schoolId = 'placeholder-school-id'; 
-      const data = await supabaseService.getExams(schoolId);
-      setExams(data || []);
+      const { data } = await supabase.from('exams').select('*').order('created_at', { ascending: false });
+      if (data) setExams(data);
     } catch (error) {
       console.error('Error fetching exams:', error);
-      // Fallback mock data if Supabase fails
-      setExams([
-        { id: '1', name: 'Term 1 Mid-Term', academic_year: 2024, term: 1, is_processed: true, school_id: '1', created_at: '' },
-        { id: '2', name: 'Term 1 End-Term', academic_year: 2024, term: 1, is_processed: false, school_id: '1', created_at: '' },
-        { id: '3', name: 'Term 2 Opening', academic_year: 2024, term: 2, is_processed: false, school_id: '1', created_at: '' },
-      ] as any);
     } finally {
       setLoading(false);
     }
@@ -198,20 +186,21 @@ export const Exams = ({ role }: { role?: string }) => {
 
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
       if (editingExam) {
-        const updated = await supabaseService.updateExam(editingExam.id, newExam);
-        setExams(exams.map(e => e.id === editingExam.id ? updated : e));
-        setEditingExam(null);
+        await supabase.from('exams').update(newExam).eq('id', editingExam.id);
       } else {
-        const schoolId = 'placeholder-school-id';
-        const created = await supabaseService.createExam({ ...newExam, school_id: schoolId });
-        setExams([created, ...exams]);
+        await supabase.from('exams').insert(newExam);
       }
+      await fetchExams();
       setShowAddModal(false);
+      setEditingExam(null);
       setNewExam({ name: '', academic_year: 2024, term: 1 });
     } catch (error) {
       console.error('Error saving exam:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -227,14 +216,14 @@ export const Exams = ({ role }: { role?: string }) => {
 
   const handleDeleteExam = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this exam?')) {
-      try {
-        await supabaseService.deleteExam(id);
-        setExams(exams.filter(e => e.id !== id));
-      } catch (error) {
-        console.error('Error deleting exam:', error);
-      }
+      await supabase.from('exams').delete().eq('id', id);
+      await fetchExams();
     }
   };
+
+  const filteredExams = exams.filter(e => 
+    e.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -245,6 +234,8 @@ export const Exams = ({ role }: { role?: string }) => {
           <input 
             type="text" 
             placeholder="Search exams..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
           />
         </div>
@@ -296,9 +287,25 @@ export const Exams = ({ role }: { role?: string }) => {
 
       {/* Exams Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {exams.map(exam => (
-          <ExamCard key={exam.id} exam={exam} onProcess={handleProcess} onEdit={handleEditExam} onDelete={handleDeleteExam} role={role} />
-        ))}
+        {loading ? (
+          <div className="col-span-full py-12 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-kenya-green/30 border-t-kenya-green rounded-full animate-spin" />
+              <p className="text-sm text-slate-500 font-medium">Loading exams...</p>
+            </div>
+          </div>
+        ) : filteredExams.length === 0 ? (
+          <div className="col-span-full py-12 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <Calendar size={40} className="text-slate-200" />
+              <p className="text-sm text-slate-500 font-medium">No exams found.</p>
+            </div>
+          </div>
+        ) : (
+          filteredExams.map(exam => (
+            <ExamCard key={exam.id} exam={exam} onProcess={handleProcess} onEdit={handleEditExam} onDelete={handleDeleteExam} role={role} />
+          ))
+        )}
       </div>
 
       {/* Create Exam Modal */}

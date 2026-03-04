@@ -17,23 +17,22 @@ import {
   ClipboardList,
   Settings
 } from 'lucide-react';
-import { supabaseService } from '../services/supabaseService';
-import { Profile } from '../types';
+import { supabase } from '../lib/supabase';
 
 export const Teachers = ({ role }: { role?: string }) => {
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [newTeacher, setNewTeacher] = useState({
     name: '',
-    role: 'Teacher',
-    subjects: [] as string[],
+    role: 'teacher',
     phone: ''
   });
 
-  const [teachers, setTeachers] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [teachers, setTeachers] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTeachers();
@@ -42,9 +41,22 @@ export const Teachers = ({ role }: { role?: string }) => {
   const fetchTeachers = async () => {
     setLoading(true);
     try {
-      const schoolId = 'placeholder-school-id';
-      const data = await supabaseService.getTeachers(schoolId);
-      setTeachers(data || []);
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('role', ['teacher', 'principal', 'super_admin']);
+      
+      if (data) {
+        setTeachers(data.map(t => ({
+          id: t.id,
+          name: t.full_name,
+          role: t.role.charAt(0).toUpperCase() + t.role.slice(1).replace('_', ' '),
+          email: t.email || 'no-email@school.com',
+          phone: t.phone_number || 'N/A',
+          avatar: (t.full_name || 'U').split(' ').map((n: string) => n[0]).join(''),
+          subjects: [] // Need to fetch from subject_teachers
+        })));
+      }
     } catch (error) {
       console.error('Error fetching teachers:', error);
     } finally {
@@ -60,50 +72,55 @@ export const Teachers = ({ role }: { role?: string }) => {
 
   const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      const schoolId = 'placeholder-school-id';
       if (editingTeacher) {
-        await supabaseService.updateProfile(editingTeacher.id, {
+        await supabase.from('profiles').update({
           full_name: newTeacher.name,
-          role: newTeacher.role as any,
-        });
+          role: newTeacher.role,
+          phone_number: newTeacher.phone
+        }).eq('id', editingTeacher.id);
       } else {
-        await supabaseService.createProfile({
-          school_id: schoolId,
+        // Simplified: In real app, you'd use Supabase Auth to create the user
+        await supabase.from('profiles').insert({
           full_name: newTeacher.name,
-          role: newTeacher.role as any,
+          role: newTeacher.role,
+          phone_number: newTeacher.phone,
+          email: generateEmail(newTeacher.name)
         });
       }
-      fetchTeachers();
+      await fetchTeachers();
       setShowAddModal(false);
-      setNewTeacher({ name: '', role: 'Teacher', subjects: [], phone: '' });
       setEditingTeacher(null);
+      setNewTeacher({ name: '', role: 'teacher', phone: '' });
     } catch (error) {
       console.error('Error saving teacher:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEditTeacher = (teacher: any) => {
     setEditingTeacher(teacher);
     setNewTeacher({
-      name: teacher.full_name,
-      role: teacher.role,
-      subjects: [],
-      phone: ''
+      name: teacher.name,
+      role: teacher.role.toLowerCase().replace(' ', '_'),
+      phone: teacher.phone
     });
     setShowAddModal(true);
   };
 
   const handleDeleteTeacher = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this teacher?')) {
-      try {
-        await supabaseService.deleteProfile(id);
-        fetchTeachers();
-      } catch (error) {
-        console.error('Error deleting teacher:', error);
-      }
+      await supabase.from('profiles').delete().eq('id', id);
+      await fetchTeachers();
     }
   };
+
+  const filteredTeachers = teachers.filter(t => 
+    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleAssign = (teacher: any) => {
     setSelectedTeacher(teacher);
@@ -124,6 +141,8 @@ export const Teachers = ({ role }: { role?: string }) => {
           <input 
             type="text" 
             placeholder="Search teachers..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all"
           />
         </div>
@@ -135,7 +154,7 @@ export const Teachers = ({ role }: { role?: string }) => {
             <button 
               onClick={() => {
                 setEditingTeacher(null);
-                setNewTeacher({ name: '', role: 'Teacher', subjects: [], phone: '' });
+                setNewTeacher({ name: '', role: 'teacher', phone: '' });
                 setShowAddModal(true);
               }}
               className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95"
@@ -148,67 +167,85 @@ export const Teachers = ({ role }: { role?: string }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {teachers.map(teacher => (
-          <div key={teacher.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-kenya-green/10 text-kenya-green flex items-center justify-center text-xl font-bold group-hover:bg-kenya-green group-hover:text-white transition-all shadow-sm">
-                  {teacher.full_name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div className="flex items-center gap-1">
-                  {(role === 'principal' || role === 'super_admin') && (
-                    <>
-                      <button 
-                        onClick={() => handleAssign(teacher)}
-                        className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
-                        title="Assign Roles & Classes"
-                      >
-                        <ClipboardList size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleEditTeacher(teacher)}
-                        className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteTeacher(teacher.id)}
-                        className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <h3 className="text-lg font-bold text-slate-900 mb-1">{teacher.full_name}</h3>
-              <p className="text-sm text-slate-500 font-medium mb-6">{teacher.role}</p>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-3 text-slate-600">
-                  <Mail size={16} className="text-slate-400" />
-                  <span className="text-xs font-medium truncate">{teacher.full_name.toLowerCase().replace(/\s+/g, '.')}@school.ac.ke</span>
-                </div>
-                <div className="flex items-center gap-3 text-slate-600">
-                  <Phone size={16} className="text-slate-400" />
-                  <span className="text-xs font-medium">+254 700 000 000</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                  General
-                </span>
-              </div>
-            </div>
-            
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between group-hover:bg-kenya-green/5 transition-colors">
-              <span className="text-xs font-bold text-slate-500 group-hover:text-kenya-green">View Full Profile</span>
-              <ChevronRight size={16} className="text-slate-300 group-hover:text-kenya-green/40" />
+        {loading ? (
+          <div className="col-span-full py-12 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-kenya-green/30 border-t-kenya-green rounded-full animate-spin" />
+              <p className="text-sm text-slate-500 font-medium">Loading teachers...</p>
             </div>
           </div>
-        ))}
+        ) : filteredTeachers.length === 0 ? (
+          <div className="col-span-full py-12 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <Users size={40} className="text-slate-200" />
+              <p className="text-sm text-slate-500 font-medium">No teachers found.</p>
+            </div>
+          </div>
+        ) : (
+          filteredTeachers.map(teacher => (
+            <div key={teacher.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-kenya-green/10 text-kenya-green flex items-center justify-center text-xl font-bold group-hover:bg-kenya-green group-hover:text-white transition-all shadow-sm">
+                    {teacher.avatar}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {(role === 'principal' || role === 'super_admin') && (
+                      <>
+                        <button 
+                          onClick={() => handleAssign(teacher)}
+                          className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
+                          title="Assign Roles & Classes"
+                        >
+                          <ClipboardList size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleEditTeacher(teacher)}
+                          className="p-2 text-slate-400 hover:text-kenya-green hover:bg-kenya-green/5 rounded-lg transition-all"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTeacher(teacher.id)}
+                          className="p-2 text-slate-400 hover:text-kenya-red hover:bg-kenya-red/5 rounded-lg transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <h3 className="text-lg font-bold text-slate-900 mb-1">{teacher.name}</h3>
+                <p className="text-sm text-slate-500 font-medium mb-6">{teacher.role}</p>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center gap-3 text-slate-600">
+                    <Mail size={16} className="text-slate-400" />
+                    <span className="text-xs font-medium truncate">{teacher.email}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-slate-600">
+                    <Phone size={16} className="text-slate-400" />
+                    <span className="text-xs font-medium">{teacher.phone}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {teacher.subjects.map((subject: string) => (
+                    <span key={subject} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                      {subject}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between group-hover:bg-kenya-green/5 transition-colors">
+                <span className="text-xs font-bold text-slate-500 group-hover:text-kenya-green">View Full Profile</span>
+                <ChevronRight size={16} className="text-slate-300 group-hover:text-kenya-green/40" />
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Assign Modal */}
@@ -324,10 +361,9 @@ export const Teachers = ({ role }: { role?: string }) => {
                       onChange={(e) => setNewTeacher({ ...newTeacher, role: e.target.value })}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-kenya-green/20 focus:border-kenya-green transition-all font-medium appearance-none"
                     >
-                      <option>Teacher</option>
-                      <option>Senior Teacher</option>
-                      <option>HOD</option>
-                      <option>Deputy Principal</option>
+                      <option value="teacher">Teacher</option>
+                      <option value="principal">Principal</option>
+                      <option value="super_admin">Super Admin</option>
                     </select>
                   </div>
                   <div>

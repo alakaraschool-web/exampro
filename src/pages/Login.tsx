@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { GraduationCap, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { supabaseService } from '../services/supabaseService';
 
 export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
   const [email, setEmail] = useState('');
@@ -17,31 +16,45 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
     setError(null);
     
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        const profile = await supabaseService.getProfile(authData.user.id);
-        onLogin(profile.role);
+      if (data.user) {
+        // Fetch user role from profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          // Fallback for demo if profile doesn't exist yet
+          let role = 'student';
+          if (email.includes('admin')) role = 'super_admin';
+          else if (email.includes('principal')) role = 'principal';
+          else if (email.includes('teacher')) role = 'teacher';
+          onLogin(role);
+        } else {
+          onLogin(profile.role);
+        }
+        
         navigate('/');
       }
     } catch (err: any) {
-      console.error('Login error:', err);
-      // Fallback for demo if Supabase is not configured or user not found
-      if (email.includes('@school.com')) {
+      setError(err.message || 'Failed to sign in');
+      
+      // Fallback for prototype mode if Supabase is not configured
+      if (!(import.meta as any).env.VITE_SUPABASE_URL) {
         let role = 'student';
         if (email.includes('admin')) role = 'super_admin';
         else if (email.includes('principal')) role = 'principal';
         else if (email.includes('teacher')) role = 'teacher';
-        
         onLogin(role);
         navigate('/');
-      } else {
-        setError(err.message || 'Invalid login credentials');
       }
     } finally {
       setLoading(false);
@@ -61,8 +74,8 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
 
         <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
           {error && (
-            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
-              <AlertCircle size={20} />
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+              <AlertCircle size={18} />
               {error}
             </div>
           )}
@@ -121,25 +134,27 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-100">
+          <div className="mt-8 pt-8 border-t border-slate-100 space-y-4">
             <div className="bg-kenya-green/5 p-4 rounded-2xl flex gap-3">
               <AlertCircle className="text-kenya-green shrink-0" size={20} />
               <div className="text-xs text-kenya-green font-medium leading-relaxed">
                 <span className="font-bold">Demo Access:</span> Use <span className="font-bold">admin@school.com</span>, <span className="font-bold">principal@school.com</span>, <span className="font-bold">teacher@school.com</span> or <span className="font-bold">student@school.com</span> with any password.
               </div>
             </div>
+            
+            <div className="text-center">
+              <button 
+                onClick={() => navigate('/setup')}
+                className="text-xs font-bold text-slate-400 hover:text-kenya-green transition-colors uppercase tracking-widest"
+              >
+                System Initialization (Setup Admin)
+              </button>
+            </div>
           </div>
         </div>
 
         <p className="text-center text-slate-400 text-sm mt-8">
           &copy; 2024 Alakara School Systems. All rights reserved.
-          <br />
-          <button 
-            onClick={() => navigate('/setup')}
-            className="mt-2 text-kenya-green font-bold hover:underline"
-          >
-            First time setup?
-          </button>
         </p>
       </div>
     </div>
