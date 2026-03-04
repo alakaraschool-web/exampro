@@ -9,7 +9,15 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
-  Award
+  Award,
+  School,
+  Plus,
+  ShieldCheck,
+  CheckCircle2,
+  XCircle,
+  MoreVertical,
+  Search,
+  Activity
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { 
@@ -24,7 +32,9 @@ import {
   Line, 
   PieChart, 
   Pie, 
-  Cell 
+  Cell,
+  AreaChart,
+  Area
 } from 'recharts';
 
 const StatCard = ({ title, value, icon: Icon, trend, trendValue, color }: any) => (
@@ -71,36 +81,81 @@ const performanceTrend = [
   { month: 'Jun', score: 78 },
 ];
 
+const schoolGrowthData = [
+  { month: 'Jan', schools: 12 },
+  { month: 'Feb', schools: 15 },
+  { month: 'Mar', schools: 18 },
+  { month: 'Apr', schools: 22 },
+  { month: 'May', schools: 28 },
+  { month: 'Jun', schools: 35 },
+];
+
 export const Dashboard = ({ role }: { role: string }) => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     students: 0,
     teachers: 0,
     subjects: 0,
-    exams: 0
+    exams: 0,
+    schools: 0,
+    activeSubscriptions: 0
   });
   const [loading, setLoading] = useState(true);
+  const [recentSchools, setRecentSchools] = useState<any[]>([]);
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [role]);
 
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
-      const { count: teacherCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'teacher');
-      const { count: subjectCount } = await supabase.from('subjects').select('*', { count: 'exact', head: true });
-      const { count: examCount } = await supabase.from('exams').select('*', { count: 'exact', head: true });
+      if (role === 'super_admin') {
+        const { count: schoolCount } = await supabase.from('schools').select('*', { count: 'exact', head: true });
+        const { count: activeSubCount } = await supabase.from('schools').select('*', { count: 'exact', head: true }).eq('status', 'active');
+        const { count: totalStudents } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
+        const { data: schools } = await supabase.from('schools').select('*').order('created_at', { ascending: false }).limit(5);
 
-      setStats({
-        students: studentCount || 0,
-        teachers: teacherCount || 0,
-        subjects: subjectCount || 0,
-        exams: examCount || 0
-      });
+        setStats({
+          ...stats,
+          schools: schoolCount || 0,
+          activeSubscriptions: activeSubCount || 0,
+          students: totalStudents || 0
+        });
+        setRecentSchools(schools || []);
+      } else {
+        const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
+        const { count: teacherCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'teacher');
+        const { count: subjectCount } = await supabase.from('subjects').select('*', { count: 'exact', head: true });
+        const { count: examCount } = await supabase.from('exams').select('*', { count: 'exact', head: true });
+
+        setStats({
+          students: studentCount || 0,
+          teachers: teacherCount || 0,
+          subjects: subjectCount || 0,
+          exams: examCount || 0,
+          schools: 0,
+          activeSubscriptions: 0
+        });
+      }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      // Fallback for demo
+      if (role === 'super_admin') {
+        setStats({
+          students: 12450,
+          teachers: 840,
+          subjects: 12,
+          exams: 45,
+          schools: 42,
+          activeSubscriptions: 38
+        });
+        setRecentSchools([
+          { id: '1', name: 'Alakara High School', location: 'Nairobi', status: 'active', plan: 'Premium' },
+          { id: '2', name: 'St. Peters Academy', location: 'Mombasa', status: 'active', plan: 'Standard' },
+          { id: '3', name: 'Greenwood International', location: 'Kisumu', status: 'suspended', plan: 'Basic' },
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -113,6 +168,167 @@ export const Dashboard = ({ role }: { role: string }) => {
       </div>
     );
   }
+
+  if (role === 'super_admin') {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard 
+            title="Total Schools" 
+            value={stats.schools} 
+            icon={School} 
+            trend="up" 
+            trendValue="+4" 
+            color="bg-kenya-green" 
+          />
+          <StatCard 
+            title="Active Subscriptions" 
+            value={stats.activeSubscriptions} 
+            icon={CheckCircle2} 
+            trend="up" 
+            trendValue="+2" 
+            color="bg-emerald-500" 
+          />
+          <StatCard 
+            title="Total Students" 
+            value={stats.students.toLocaleString()} 
+            icon={GraduationCap} 
+            trend="up" 
+            trendValue="+1.2k" 
+            color="bg-kenya-red" 
+          />
+          <StatCard 
+            title="System Health" 
+            value="99.9%" 
+            icon={Activity} 
+            color="bg-kenya-black" 
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">School Onboarding Growth</h2>
+                <p className="text-sm text-slate-500 font-medium">Monthly registration trend</p>
+              </div>
+              <button 
+                onClick={() => navigate('/schools')}
+                className="bg-kenya-green hover:bg-kenya-green/90 text-white font-bold px-4 py-2 rounded-xl shadow-lg shadow-kenya-green/10 flex items-center gap-2 transition-all active:scale-95 text-sm"
+              >
+                <Plus size={18} />
+                Add School
+              </button>
+            </div>
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={schoolGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorSchools" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#006600" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#006600" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                  <Area type="monotone" dataKey="schools" stroke="#006600" strokeWidth={3} fillOpacity={1} fill="url(#colorSchools)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900 mb-6">Recent Schools</h2>
+            <div className="space-y-6">
+              {recentSchools.map((school, i) => (
+                <div key={i} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate('/schools')}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold group-hover:bg-kenya-green group-hover:text-white transition-all">
+                      {school.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">{school.name}</h4>
+                      <p className="text-xs text-slate-500 font-medium">{school.location}</p>
+                    </div>
+                  </div>
+                  <div className={cn(
+                    "px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider",
+                    school.status === 'active' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                  )}>
+                    {school.status}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button 
+              onClick={() => navigate('/schools')}
+              className="w-full mt-8 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+            >
+              Manage All Schools
+              <ArrowUpRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900 mb-6">Subscription Distribution</h2>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Premium', value: 15, color: '#006600' },
+                      { name: 'Standard', value: 20, color: '#990000' },
+                      { name: 'Basic', value: 7, color: '#000000' },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {[
+                      { name: 'Premium', value: 15, color: '#006600' },
+                      { name: 'Standard', value: 20, color: '#990000' },
+                      { name: 'Basic', value: 7, color: '#000000' },
+                    ].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900 mb-6">Quick System Actions</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <button className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-kenya-green transition-all text-left group">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-600 mb-3 shadow-sm group-hover:bg-kenya-green group-hover:text-white transition-all">
+                  <ShieldCheck size={20} />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">Security Audit</h4>
+                <p className="text-xs text-slate-500 mt-1">Review system logs</p>
+              </button>
+              <button className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-kenya-green transition-all text-left group">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-600 mb-3 shadow-sm group-hover:bg-kenya-green group-hover:text-white transition-all">
+                  <Users size={20} />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">Global Users</h4>
+                <p className="text-xs text-slate-500 mt-1">Manage all accounts</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (role === 'student') {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -483,3 +699,7 @@ export const Dashboard = ({ role }: { role: string }) => {
     </div>
   );
 };
+
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
+}

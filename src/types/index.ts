@@ -11,11 +11,14 @@ export interface School {
 
 export interface Profile {
   id: string;
-  school_id: string;
+  school_id?: string;
   full_name: string;
   admission_no?: string;
   role: UserRole;
   photo_url?: string;
+  phone?: string;
+  bio?: string;
+  email?: string;
   created_at: string;
 }
 

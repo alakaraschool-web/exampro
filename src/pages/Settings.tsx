@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -14,8 +14,12 @@ import {
   Trash2,
   X,
   CheckCircle2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { supabaseService } from '../services/supabaseService';
+import { Profile } from '../types';
 
 const SettingItem = ({ icon: Icon, title, description, onClick }: any) => (
   <div 
@@ -39,13 +43,43 @@ const SettingItem = ({ icon: Icon, title, description, onClick }: any) => (
 
 export const Settings = ({ role }: { role: string }) => {
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@alakara.ac.ke',
-    phone: '+254 712 345 678',
-    role: 'Principal',
-    bio: 'Dedicated educator with 15 years of experience in school administration.'
+    name: '',
+    email: '',
+    phone: '',
+    role: '',
+    bio: ''
   });
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const userProfile = await supabaseService.getProfile(session.user.id);
+        setProfile(userProfile);
+        setProfileData({
+          name: userProfile.full_name || '',
+          email: userProfile.email || session.user.email || '',
+          phone: userProfile.phone || '',
+          role: userProfile.role || '',
+          bio: userProfile.bio || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [passwordData, setPasswordData] = useState({
     current: '',
     new: '',
@@ -82,12 +116,40 @@ export const Settings = ({ role }: { role: string }) => {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleApplyChanges = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setActiveModal(null);
-    }, 1500);
+  const handleApplyChanges = async () => {
+    setSaving(true);
+    try {
+      if (activeModal === 'profile' && profile) {
+        // Update profile in public.profiles
+        await supabaseService.updateProfile(profile.id, {
+          full_name: profileData.name,
+          phone: profileData.phone,
+          bio: profileData.bio
+        });
+        
+        // Update email in auth.users if it changed
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.email !== profileData.email) {
+          const { error: authError } = await supabase.auth.updateUser({
+            email: profileData.email
+          });
+          if (authError) throw authError;
+        }
+        
+        await fetchProfile(); // Refresh
+      }
+      
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setActiveModal(null);
+      }, 1500);
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      alert('Failed to update settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderModal = () => {
@@ -115,7 +177,7 @@ export const Settings = ({ role }: { role: string }) => {
                 <div className="flex justify-center mb-6">
                   <div className="relative group">
                     <div className="w-24 h-24 rounded-full bg-kenya-green/10 border-4 border-white shadow-md flex items-center justify-center text-kenya-green text-3xl font-bold">
-                      JD
+                      {profileData.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '??'}
                     </div>
                     <button type="button" className="absolute bottom-0 right-0 p-2 bg-kenya-green text-white rounded-full shadow-lg hover:scale-110 transition-transform">
                       <ImageIcon size={16} />
@@ -331,10 +393,12 @@ export const Settings = ({ role }: { role: string }) => {
             </button>
             <button 
               onClick={handleApplyChanges}
-              disabled={showSuccess}
-              className="px-8 py-3 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/10 hover:bg-kenya-green/90 transition-all flex items-center gap-2 disabled:bg-emerald-600"
+              disabled={showSuccess || saving}
+              className="px-8 py-3 bg-kenya-green text-white font-bold rounded-2xl shadow-lg shadow-kenya-green/20 hover:bg-kenya-green/90 transition-all flex items-center gap-2 disabled:bg-emerald-600"
             >
-              {showSuccess ? (
+              {saving ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : showSuccess ? (
                 <>
                   <CheckCircle2 size={20} />
                   Changes Applied!

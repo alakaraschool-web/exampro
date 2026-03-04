@@ -121,15 +121,6 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-600 font-medium">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-kenya-green font-bold hover:underline">
-                Create Account
-              </Link>
-            </p>
-          </div>
-
           <div className="mt-8 pt-8 border-t border-slate-100">
             <div className="bg-kenya-green/5 p-4 rounded-2xl flex gap-3">
               <AlertCircle className="text-kenya-green shrink-0" size={20} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -19,6 +19,9 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { supabase } from '../lib/supabase';
+import { supabaseService } from '../services/supabaseService';
+import { Profile } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -54,8 +57,25 @@ export const DashboardLayout = ({ children, role, onLogout }: { children: React.
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const userProfile = await supabaseService.getProfile(session.user.id);
+          setProfile(userProfile);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleLogout = () => {
     onLogout();
@@ -217,19 +237,19 @@ export const DashboardLayout = ({ children, role, onLogout }: { children: React.
                 className="flex items-center gap-3 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <div className="flex flex-col items-end hidden md:flex px-2">
-                  <span className="text-sm font-semibold text-slate-900">John Doe</span>
+                  <span className="text-sm font-semibold text-slate-900">{profile?.full_name || 'Loading...'}</span>
                   <span className="text-[10px] text-kenya-green font-bold uppercase tracking-wider">{role.replace('_', ' ')}</span>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-kenya-green/10 border-2 border-white shadow-sm flex items-center justify-center text-kenya-green font-bold">
-                  JD
+                  {profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '??'}
                 </div>
               </button>
 
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                    <p className="text-sm font-bold text-slate-900">John Doe</p>
-                    <p className="text-xs text-slate-500">john.doe@alakara.ac.ke</p>
+                    <p className="text-sm font-bold text-slate-900">{profile?.full_name || 'User'}</p>
+                    <p className="text-xs text-slate-500">{profile?.email || 'email@example.com'}</p>
                   </div>
                   <div className="p-2">
                     <Link 
