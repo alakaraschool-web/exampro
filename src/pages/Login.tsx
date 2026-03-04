@@ -121,15 +121,17 @@ export const Login = ({ onLogin }: { onLogin: (role: string) => void }) => {
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-100 space-y-4 text-center">
-            <p className="text-sm text-slate-600">
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-600 font-medium">
               Don't have an account?{' '}
-              <Link to="/register" className="font-bold text-kenya-green hover:text-kenya-green/80">
+              <Link to="/register" className="text-kenya-green font-bold hover:underline">
                 Create Account
               </Link>
             </p>
-            
-            <div className="bg-kenya-green/5 p-4 rounded-2xl flex gap-3 text-left">
+          </div>
+
+          <div className="mt-8 pt-8 border-t border-slate-100">
+            <div className="bg-kenya-green/5 p-4 rounded-2xl flex gap-3">
               <AlertCircle className="text-kenya-green shrink-0" size={20} />
               <div className="text-xs text-kenya-green font-medium leading-relaxed">
                 <span className="font-bold">Demo Access:</span> Use <span className="font-bold">admin@school.com</span>, <span className="font-bold">principal@school.com</span>, <span className="font-bold">teacher@school.com</span> or <span className="font-bold">student@school.com</span> with any password.
